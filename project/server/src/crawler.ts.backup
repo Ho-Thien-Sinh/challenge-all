@@ -1,0 +1,1062 @@
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosError, AxiosResponse } from 'axios';
+import * as puppeteer from 'puppeteer';
+import { Page, Browser, ElementHandle, LaunchOptions } from 'puppeteer';
+import * as cheerio from 'cheerio';
+import { v4 as uuidv4 } from 'uuid';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+// Định nghĩa kiểu cho HttpsProxyAgent
+class HttpsProxyAgent {
+  constructor(public proxy: string) {}
+}
+
+// Danh sách proxy miễn phí (có thể thay thế bằng dịch vụ proxy trả phí tốt hơn)
+const FREE_PROXIES = [
+  'http://38.49.148.42:999',
+  'http://45.77.43.163:80',
+  'http://45.77.43.163:3128',
+  'http://103.105.77.10:80',
+  'http://103.105.77.10:3128',
+];
+
+// Hàm lấy proxy ngẫu nhiên
+function getRandomProxy() {
+  return FREE_PROXIES[Math.floor(Math.random() * FREE_PROXIES.length)];
+}
+
+// Tạo axios instance với proxy
+function createAxiosWithProxy() {
+  const proxy = getRandomProxy();
+  console.log(`Sử dụng proxy: ${proxy}`);
+  
+  const instance = axios.create({
+    httpsAgent: new HttpsProxyAgent(proxy),
+    timeout: 10000,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5',
+      'Referer': 'https://www.google.com/',
+      'DNT': '1',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1',
+      'Cache-Control': 'max-age=0',
+    },
+  });
+
+  // Thử lại khi gặp lỗi
+  instance.interceptors.response.use(undefined, (err) => {
+    console.error(`Lỗi khi gửi yêu cầu: ${err.message}`);
+    throw err;
+  });
+
+  return instance;
+}
+
+// Re-export types for cleaner imports
+type PuppeteerPage = Page;
+type PuppeteerBrowser = Browser;
+
+// Extend NodeJS Global interface
+declare global {
+  namespace NodeJS {
+    interface Global {
+      window: typeof globalThis & Window;
+      document: Document;
+      navigator: Navigator;
+      HTMLAnchorElement: {
+        prototype: HTMLAnchorElement;
+        new(): HTMLAnchorElement;
+      };
+    }
+  }
+
+  // Extend global Window interface
+  interface Window {
+    $: cheerio.CheerioAPI;
+  }
+  
+  // Add missing DOM types
+  interface Document {}
+  interface Navigator {}
+  
+  // Add missing error type
+  interface Error {
+    response?: {
+      data?: {
+        message?: string;
+      };
+    };
+    message: string;
+  }
+  
+  // HTMLAnchorElement is already provided by @types/node
+}
+
+// Type for Cheerio API instance
+type CheerioAPI = cheerio.CheerioAPI;
+
+// Article interface
+export interface Article {
+  id: string;
+  title: string;
+  summary: string;
+  content: string;
+  author: string;
+  category: string;
+  source_url: string;
+  image_url: string;
+  published_at: string;
+  status: 'draft' | 'published' | 'archived';
+  created_at: string;
+  updated_at: string;
+}
+
+// Crawler statistics interface
+interface CrawlerStats {
+  totalCrawled: number;
+  success: number;
+  failed: number;
+  startTime: Date | null;
+  endTime: Date | null;
+  errors: Array<{ url: string; error: string }>;
+}
+
+// Crawler options interface
+export interface CrawlOptions {
+  maxArticles?: number;
+  maxErrors?: number;
+  delayMs?: number;
+  baseUrl?: string;
+  maxConcurrent?: number;
+  maxRetries?: number;
+  batchSize?: number;
+  pagesToCrawl?: number;
+}
+
+// Initialize Supabase client
+const getSupabaseClient = (): SupabaseClient => {
+  const supabaseUrl = process.env.SUPABASE_URL || '';
+  const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
+  
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase URL or Key in environment variables');
+  }
+  
+  return createClient(supabaseUrl, supabaseKey);
+};
+
+export class NewsCrawler {
+  private axiosInstance: AxiosInstance;
+  protected baseUrl: string;
+  protected supabase: SupabaseClient;
+  protected maxConcurrent: number;
+  protected delayBetweenRequests: number;
+  protected maxRetries: number;
+  protected batchSize: number;
+  protected pagesToCrawl: number;
+  public isCrawling: boolean;
+  protected stats: CrawlerStats;
+  private browser: Browser | null = null;
+
+  constructor(baseUrl: string, options: CrawlOptions = {}) {
+    this.baseUrl = baseUrl;
+    this.maxConcurrent = options.maxConcurrent || 3;
+    this.delayBetweenRequests = options.delayMs || 1000;
+    this.maxRetries = options.maxRetries || 3;
+    this.batchSize = options.batchSize || 30;
+    this.pagesToCrawl = options.pagesToCrawl || 3;
+    this.isCrawling = false;
+    
+    this.stats = {
+      totalCrawled: 0,
+      success: 0,
+      failed: 0,
+      startTime: null,
+      endTime: null,
+      errors: []
+    };
+
+    this.axiosInstance = axios.create({
+      baseURL: this.baseUrl,
+      timeout: 30000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'vi,en-US;q=0.7,en;q=0.3',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Cache-Control': 'max-age=0',
+        'Referer': this.baseUrl,
+        'Origin': this.baseUrl
+      },
+      validateStatus: (status: number) => status >= 200 && status < 400
+    });
+    
+    this.supabase = getSupabaseClient();
+  }
+
+  // Helper function to create delay
+  protected delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // Function to make HTTP requests with retry logic
+  protected async fetchWithRetry<T>(
+    url: string,
+    config: AxiosRequestConfig = {},
+    retries: number = this.maxRetries
+  ): Promise<T> {
+    try {
+      const response = await this.axiosInstance.request<T>({
+        ...config,
+        url,
+        headers: {
+          ...config.headers,
+          'Referer': this.baseUrl,
+          'Origin': this.baseUrl
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      if (retries <= 0) {
+        const statusCode = error.response?.status;
+        const errorMessage = error.response?.data?.message || error.message;
+        
+        if (statusCode === 404) {
+          console.error(`Error 404 - Not found: ${url}`);
+          throw new Error(`Not found: ${url}`);
+        } else if (statusCode === 403 || statusCode === 429) {
+          console.error(`Error ${statusCode} - Blocked due to excessive requests: ${url}`);
+          throw new Error(`Blocked due to excessive requests. Please try again later.`);
+        } else if (statusCode && statusCode >= 500) {
+          console.error(`Error ${statusCode} - Server error: ${url}`);
+          throw new Error(`Server error: ${errorMessage}`);
+        } else {
+          console.error(`Unknown error: ${errorMessage}`);
+          throw error;
+        }
+      }
+      
+      console.log(`Retrying ${url}... (${retries} attempts left)`);
+      await this.delay(this.delayBetweenRequests);
+      return this.fetchWithRetry(url, config, retries - 1);
+    }
+  }
+
+  /**
+   * Process a single article
+   * @param articleUrl URL of the article to process
+   * @param articleCategory Category of the article
+   * @returns Processed article or null if processing failed
+   */
+  protected async processArticle(articleUrl: string, articleCategory: string): Promise<Article | null> {
+    let browser: Browser | null = null;
+    let page: Page | null = null;
+    
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+      
+      page = await browser.newPage();
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+      await page.goto(articleUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+      
+      // Wait for content to load
+      await page.waitForSelector('article, [class*="news"], [class*="content"]', { timeout: 30000 });
+      
+      // Extract article content
+      const content = await page.content();
+      const $ = cheerio.load(content);
+      
+      // Extract article details with more robust selectors
+      const title = $('h1.article-title, h1.title-detail, h1.title-news, h1.detail-title').first().text().trim();
+      const description = $('h2.detail-sapo, h2.sapo, .description, .sapo-detail').first().text().trim();
+      
+      // Get main content
+      const contentElement = $('article.fck_detail, .content-detail, .article-content, .main-content-body, .detail-content');
+      contentElement.find('script, style, iframe, .social-like, .social-share, .box-tag, .related-news, .comment-box, .ad-container').remove();
+      const contentText = contentElement.html() || contentElement.text().trim();
+      
+      // Get author
+      let author = $('p.author, .author-name, .author, .author_mail, .author-info').first().text().trim();
+      if (!author) {
+        const authorMatch = content.match(/(?:Nguồn|Theo|Tác giả|By)[: ]*([^<\n]+)/i);
+        author = authorMatch ? authorMatch[1].trim() : 'Tuổi Trẻ';
+      }
+      
+      // Get image URL
+      const imageUrl = $('meta[property="og:image"], meta[name="twitter:image"]').attr('content') || 
+                      $('.tabs_heading img, .VCSortableInPreviewMode img, .tplCaption img, .detail-img img').first().attr('src') || '';
+      
+      // Get published date
+      let publishedAt = $('meta[property="article:published_time"], meta[property="og:updated_time"]').attr('content') ||
+                      $('.date-time, .datetime, time[datetime]').attr('datetime') ||
+                      $('.date-time, .datetime').text().trim() ||
+                      new Date().toISOString();
+      
+      // Normalize date format
+      if (publishedAt && isNaN(Date.parse(publishedAt))) {
+        publishedAt = new Date().toISOString();
+      }
+      
+      if (!title || !contentText) {
+        console.error(`Could not extract content from: ${articleUrl}`);
+        return null;
+      }
+      
+      const article: Article = {
+        id: uuidv4(),
+        title,
+        summary: description || contentText.substring(0, 200) + '...',
+        content: contentText,
+        author,
+        category: articleCategory,
+        source_url: articleUrl,
+        image_url: imageUrl,
+        published_at: publishedAt,
+        status: 'published',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      return article;
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Error processing article ${articleUrl}:`, errorMessage);
+      return null;
+    } finally {
+      if (page) await page.close();
+      if (browser) await browser.close();
+    }
+  }
+
+  /**
+   * Save articles to the database
+   * @param articles Array of articles to save
+   */
+  protected async saveArticlesToDatabase(articles: Article[]): Promise<void> {
+    if (!this.supabase) {
+      console.error('Supabase client is not initialized');
+      return;
+    }
+
+    try {
+      const { data, error } = await this.supabase
+        .from('articles')
+        .upsert(articles, { onConflict: 'source_url' });
+      
+      if (error) {
+        throw error;
+      }
+      
+      console.log(`Successfully saved ${articles.length} articles to database`);
+    } catch (error) {
+      console.error('Error saving articles to database:', error);
+      throw error;
+    }
+  }
+
+  private async crawlWithAxios(url: string): Promise<string | null> {
+    try {
+      const axiosInstance = createAxiosWithProxy();
+      const response = await axiosInstance.get(url, {
+        timeout: 15000,
+        validateStatus: (status) => status === 200,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Lỗi khi crawl với Axios: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return null;
+    }
+  }
+
+  private async createBrowser(useProxy: boolean = false): Promise<Browser> {
+    try {
+      const launchOptions: puppeteer.LaunchOptions & { args: string[] } = {
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu',
+          '--window-size=1920,1080'
+        ],
+        defaultViewport: {
+          width: 1920,
+          height: 1080,
+          deviceScaleFactor: 1,
+        }
+      };
+
+      // Thêm proxy nếu được yêu cầu
+      if (useProxy) {
+        const proxy = getRandomProxy();
+        console.log(`Sử dụng proxy: ${proxy}`);
+        launchOptions.args.push(`--proxy-server=${proxy}`);
+      }
+
+      // Thêm user agent
+      const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
+      launchOptions.args.push(`--user-agent=${userAgent}`);
+
+      const browser = await puppeteer.launch(launchOptions);
+      
+      // Tạo một page mới và cấu hình
+      const page = await browser.newPage();
+      await page.setViewport({
+        width: 1920,
+        height: 1080,
+        deviceScaleFactor: 1,
+      });
+      
+      // Tránh bị phát hiện là bot
+      await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+        Object.defineProperty(navigator, 'languages', {
+          get: () => ['en-US', 'en', 'vi'],
+        });
+      });
+      
+      await page.close(); // Đóng page tạm thời
+      return browser;
+    } catch (error) {
+      console.error('Không thể khởi tạo trình duyệt:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Crawl a category page and extract articles
+   * @param category Category to crawl
+   * @param maxArticles Maximum number of articles to crawl
+   * @returns Array of crawled articles
+   */
+  protected async crawlCategory(
+    category: { name: string; path: string },
+    maxArticles: number = 10,
+    retryCount: number = 0,
+    useAxios: boolean = false
+  ): Promise<Article[]> {
+    const BATCH_SIZE = 3;
+    const MAX_ERRORS = 5;
+    let errorCount = 0;
+    const articles: Article[] = [];
+    let browser: any = null;
+    let page: any = null;
+    
+    try {
+      console.log(`[${new Date().toISOString()}] Crawling ${category.name} at path: ${category.path}`);
+      
+      // Mở trình duyệt mới nếu chưa có
+      if (!this.browser && !useAxios) {
+        console.log('Khởi tạo trình duyệt mới...');
+        try {
+          browser = await this.createBrowser();
+        } catch (error) {
+          console.error('Không thể khởi tạo trình duyệt:', error);
+          if (retryCount < 2) {
+            console.log(`Thử lại với phương pháp thay thế (lần ${retryCount + 1})...`);
+            return this.crawlCategory(category, maxArticles, retryCount + 1, true);
+          }
+          return [];
+        }
+      } else {
+        browser = this.browser;
+      }
+      
+      if (!browser) {
+        throw new Error('Không thể khởi tạo trình duyệt');
+      }
+    let errorCount = 0;
+    let browser: Browser | null = null;
+    let page: Page | null = null;
+    
+    try {
+      // Kiểm tra kết nối Supabase
+      const { data, error } = await this.supabase
+        .from('articles')
+        .select('source_url')
+        .limit(1);
+
+      if (error) {
+        console.error('Lỗi khi kiểm tra kết nối Supabase:', error);
+        throw error;
+      }
+      
+      console.log(`Crawling ${category.name} at path: ${category.path}`);
+      
+      // Sử dụng browser đã được khởi tạo hoặc tạo mới
+      browser = this.browser || await this.createBrowser();
+      
+      // Tạo một page mới
+      // Tạo trang mới và thiết lập user agent
+      page = await browser.newPage();
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+      
+      // Điều hướng đến trang chuyên mục
+      const categoryUrl = new URL(category.path, this.baseUrl).toString();
+      console.log(`Đang truy cập: ${categoryUrl}`);
+      
+      try {
+        await page.goto(categoryUrl, { 
+          waitUntil: 'networkidle2', 
+          timeout: 60000 
+        });
+        
+        console.log('Đang chờ các bài viết tải...');
+        
+        // Cuộn trang để tải thêm nội dung
+        await page.evaluate(async () => {
+          window.scrollTo(0, document.body.scrollHeight);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          window.scrollTo(0, 0);
+        });
+        
+        // Chờ các phần tử xuất hiện
+        await page.waitForSelector('body', { timeout: 15000 });
+        
+        // Lấy nội dung HTML để debug nếu cần
+        if (process.env.DEBUG === 'true') {
+          const htmlContent = await page.content();
+          console.log('Đã tải xong trang. Kích thước HTML:', htmlContent.length, 'bytes');
+          
+          // Lưu nội dung HTML để kiểm tra
+          const fs = require('fs');
+          const debugDir = 'debug';
+          if (!fs.existsSync(debugDir)) {
+            fs.mkdirSync(debugDir);
+          }
+          
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const debugFile = `${debugDir}/page-${timestamp}.html`;
+          fs.writeFileSync(debugFile, htmlContent);
+          console.log(`Đã lưu nội dung trang vào file ${debugFile}`);
+          
+          // Chụp ảnh màn hình
+          const screenshotPath = `${debugDir}/screenshot-${timestamp}.png` as const;
+          await page.screenshot({ 
+            path: screenshotPath as `${string}.png`,
+            fullPage: true 
+          });
+          console.log(`Đã chụp ảnh màn hình đầy đủ vào ${screenshotPath}`);
+        }
+        
+        // Trích xuất liên kết bài viết từ trang
+        const articleLinks = await page.evaluate((baseUrl: string) => {
+          console.log('Bắt đầu trích xuất liên kết bài viết...');
+          
+          // Hàm kiểm tra URL hợp lệ
+          const isValidArticleUrl = (url: string): boolean => {
+            try {
+              const urlObj = new URL(url, baseUrl);
+              const path = urlObj.pathname.toLowerCase();
+              const hostname = urlObj.hostname.toLowerCase();
+              
+              // Chỉ chấp nhận các tên miền cụ thể
+              if (!['tuoitre.vn', 'www.tuoitre.vn', 'ttvn.vn', 'www.ttvn.vn'].includes(hostname)) {
+                return false;
+              }
+              
+              // Danh sách từ khóa không mong muốn trong URL
+              const excludeKeywords = [
+                'login', 'register', 'dang-ky', 'profile', 'account', 'bookmark', 'comment',
+                'tag', 'category', 'chu-de', 'sitemap', 'rss', 'contact', 'lien-he', 'about',
+                'dieu-khoan', 'quy-dinh', 'chinh-sach', 'policy', 'terms', 'privacy',
+                'tim-kiem', 'search', 'thu-vien', 'library', 'hoi-dap', 'faq', 'huong-dan', 'help',
+                'video', 'photo', 'infographic', 'media', 'audio', 'podcast', 'live', 'event', 'promotion', 'quang-cao'
+              ];
+              
+              // Kiểm tra xem URL có chứa từ khóa không mong muốn không
+              const shouldExclude = excludeKeywords.some(keyword => 
+                path.includes(keyword) || url.toLowerCase().includes(keyword)
+              );
+              
+              // Kiểm tra xem URL có đuôi .html hoặc là URL bài viết hợp lệ không
+              const isArticleLike = path.endsWith('.html') || 
+                                 /\/\d{4}\/\d{2}\//.test(path) ||
+                                 /-\d+(\.html)?$/.test(path);
+              
+              return !shouldExclude && isArticleLike;
+            } catch (e) {
+              console.error('Lỗi khi kiểm tra URL:', e);
+              return false;
+            }
+          };
+          
+          // Lấy tất cả các liên kết bài viết hợp lệ
+          const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href]'))
+            .map(a => {
+              try {
+                const url = new URL(a.href, baseUrl).toString();
+                return isValidArticleUrl(url) ? url : null;
+              } catch (e) {
+                return null;
+              }
+            })
+            .filter((url): url is string => url !== null);
+          
+          // Loại bỏ các URL trùng lặp
+          return [...new Set(links)];
+        }, this.baseUrl);
+        
+        console.log(`Tìm thấy ${articleLinks.length} liên kết bài viết tiềm năng`);
+        
+        if (!articleLinks || articleLinks.length === 0) {
+          console.log('Không tìm thấy bài viết nào trong chuyên mục này');
+          return [];
+        }
+        
+        // Lấy danh sách URL đã tồn tại từ cơ sở dữ liệu
+        const { data: existingArticles, error: fetchError } = await this.supabase
+          .from('articles')
+          .select('source_url');
+          
+        if (fetchError) {
+          console.error('Lỗi khi lấy danh sách bài viết đã crawl:', fetchError);
+          throw fetchError;
+        }
+        
+        const existingUrls = new Set(existingArticles?.map(art => art.source_url) || []);
+        
+        // Lọc ra các bài viết mới chưa được crawl
+        const newArticleLinks = articleLinks.filter((link: string) => !existingUrls.has(link));
+        
+        console.log(`Tìm thấy ${articleLinks.length} bài viết, trong đó có ${newArticleLinks.length} bài mới cần crawl`);
+        
+        if (newArticleLinks.length === 0) {
+          console.log('Không có bài viết mới nào cần crawl');
+          return [];
+        }
+        
+        // Duyệt qua từng bài viết và lấy nội dung
+        const articles: Article[] = [];
+        let errorCount = 0;
+        const maxErrors = 5; // Số lỗi tối đa trước khi dừng
+        
+        // Xử lý đồng thời tối đa 3 bài viết một lúc
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < newArticleLinks.length; i += BATCH_SIZE) {
+          const batch = newArticleLinks.slice(i, i + BATCH_SIZE);
+          const batchPromises = batch.map(async (link: string) => {
+            try {
+              console.log(`Đang xử lý bài viết: ${link}`);
+              const article = await this.processArticle(link, category.name);
+              return article;
+            } catch (error) {
+              console.error(`Lỗi khi xử lý bài viết ${link}:`, error);
+              errorCount++;
+              if (errorCount >= maxErrors) {
+                throw new Error(`Đã đạt tối đa số lỗi cho phép (${maxErrors})`);
+              }
+              return null;
+            }
+          });
+          
+          const batchResults = await Promise.all(batchPromises);
+          const successfulArticles = batchResults.filter((article): article is Article => article !== null);
+          articles.push(...successfulArticles);
+          
+          // Thêm độ trễ giữa các batch
+          if (i + BATCH_SIZE < newArticleLinks.length) {
+            await this.delay(2000); // Đợi 2 giây giữa các batch
+          }
+        }
+        
+        return articles;
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`Lỗi khi crawl chuyên mục:`, errorMessage);
+        if (retryCount < 3) {
+          console.log(`Thử lại lần ${retryCount + 1}...`);
+          return this.crawlCategory(category, maxArticles, retryCount + 1, useAxios);
+        }
+        throw error;
+      return articles;
+    } catch (error) {
+      console.error(`Lỗi khi crawl category ${category.name}:`, error);
+      throw error;
+    } finally {
+      try {
+        if (page) {
+          await page.close().catch(console.error);
+        }
+        if (browser && browser !== this.browser) {
+          await browser.close().catch(console.error);
+        }
+      } catch (e) {
+        console.error('Lỗi khi đóng trình duyệt hoặc trang:', e);
+      }
+    }
+            
+            if (errorCount >= maxErrors) {
+              console.error(`Đã đạt tối đa số lỗi (${maxErrors}). Dừng crawl.`);
+              break;
+            }
+          }
+        }
+          
+          // Log các phần tử bài viết
+          const articleElements = document.querySelectorAll('article, [class*="news"], [class*="item-news"]');
+          console.log('Số lượng phần tử bài viết tìm thấy:', articleElements.length);
+          
+          // Log cấu trúc HTML của 1-2 phần tử đầu tiên
+          if (articleElements.length > 0) {
+            console.log('Cấu trúc HTML của phần tử bài viết đầu tiên:');
+            console.log(articleElements[0].outerHTML.substring(0, 500) + '...');
+          }
+          const links: string[] = [];
+          // Các selector mới phù hợp với cấu trúc hiện tại của tuoitre.vn
+          const selectors = [
+            // Các selector cụ thể
+            'article a[href*=".html"]',
+            '.box-category-item a[href*=".html"]',
+            '.box-category-link-title a[href*=".html"]',
+            'h3.title-news a[href*=".html"]',
+            'h3.title-news a[href*=".ttvn.vn"]',
+            
+            // Các selector chung hơn
+            'a[href*=".html"]:not([href*="video"]):not([href*="photo"]):not([href*="infographic"])',
+            'a[href*="tuoitre.vn/"]:not([href*="video"]):not([href*="photo"])',
+            'a[href*="ttvn.vn/"]:not([href*="video"]):not([href*="photo"])',
+            
+            // Các selector thay thế
+            '.news-item a[href*=".html"]',
+            '.item-news a[href*=".html"]',
+            '.title-news a[href*=".html"]',
+            'h3[class*="title"] a[href*=".html"]',
+            
+            // Thêm các selector mới
+            '.box-cate-common a[href*=".html"]',
+            '.box-category a[href*=".html"]',
+            '.list-news a[href*=".html"]',
+            '.list-news-title a[href*=".html"]',
+            '.news-title a[href*=".html"]',
+            '.news-item-title a[href*=".html"]',
+            'h3 a[href*=".html"]',
+            'h2 a[href*=".html"]',
+            
+            // Các selector không có .html
+            'a[href^="/"]:not([href*="video"]):not([href*="photo"]):not([href*="infographic"]):not([href*="#"]):not([href*="javascript:"])',
+            'a[href*="tuoitre.vn/"]:not([href*="video"]):not([href*="photo"]):not([href*="infographic"])',
+            'a[href*="ttvn.vn/"]:not([href*="video"]):not([href*="photo"]):not([href*="infographic"])',
+            
+            // Thêm các selector đặc biệt cho tuoitre.vn
+            '.box-category a[href*=".ttvn.vn"], .box-category a[href*="tuoitre.vn"], .box-category a[href*=".html"]',
+            '.box-category-item a[href*=".ttvn.vn"], .box-category-item a[href*="tuoitre.vn"], .box-category-item a[href*=".html"]',
+            '.box-category-link-title a[href*=".ttvn.vn"], .box-category-link-title a[href*="tuoitre.vn"], .box-category-link-title a[href*=".html"]',
+            '.box-category-content a[href*=".ttvn.vn"], .box-category-content a[href*="tuoitre.vn"], .box-category-content a[href*=".html"]',
+            
+            // Các selector chung cho tiêu đề bài viết
+            'h3 a[href*=".ttvn.vn"], h3 a[href*="tuoitre.vn"], h3 a[href*=".html"]',
+            'h2 a[href*=".ttvn.vn"], h2 a[href*="tuoitre.vn"], h2 a[href*=".html"]',
+            
+            // Thử tìm tất cả các thẻ a có chứa đường dẫn bài viết
+            'a[href*="/tin-"], a[href*="/bai-"], a[href*="/bai-viet-"], a[href*="/bai-bao-"]',
+            'a[href*="/tin-tuc-"], a[href*="/bai-viet/"]',
+            
+            // Thử tìm các phần tử có class chứa từ khóa liên quan đến tin tức
+            '[class*="news"] a[href*=".html"], [class*="news"] a[href*="tuoitre.vn"], [class*="news"] a[href*=".ttvn.vn"]',
+            '[class*="item"] a[href*=".html"], [class*="item"] a[href*="tuoitre.vn"], [class*="item"] a[href*=".ttvn.vn"]',
+            '[class*="title"] a[href*=".html"], [class*="title"] a[href*="tuoitre.vn"], [class*="title"] a[href*=".ttvn.vn"]'
+          ];
+          
+          // Kiểm tra URL bài viết hợp lệ
+          const isValidArticleUrl = (url: string) => {
+            try {
+              const urlObj = new URL(url, 'https://tuoitre.vn');
+              const path = urlObj.pathname.toLowerCase();
+              
+              // Danh sách từ khóa không mong muốn trong URL
+              const excludeKeywords = [
+                'login', 'register', 'dang-ky', 'profile', 'account', 'bookmark', 'comment',
+                'tag', 'category', 'chu-de', 'sitemap', 'rss', 'contact', 'lien-he', 'about',
+                'dieu-khoan', 'quy-dinh', 'chinh-sach', 'policy', 'terms', 'privacy',
+                'tim-kiem', 'search', 'thu-vien', 'library', 'hoi-dap', 'faq', 'huong-dan', 'help'
+              ];
+              
+              // Kiểm tra xem URL có chứa từ khóa không mong muốn không
+              const shouldExclude = excludeKeywords.some(keyword => 
+                path.includes(keyword) || url.toLowerCase().includes(keyword)
+              );
+              
+              // Kiểm tra xem URL có đuôi .html hoặc là URL bài viết hợp lệ không
+              const isArticleLike = path.endsWith('.html') || 
+                                 /\/\d{4}\/\d{2}\//.test(path) ||
+                                 /-\d+\.html$/.test(path);
+              
+              return !shouldExclude && isArticleLike;
+            } catch (e) {
+              return false;
+            }
+          };
+          // Lấy tất cả các liên kết bài viết
+          const articleLinks = new Set<string>();
+          
+          // Thử các selector khác nhau
+          for (const selector of selectors) {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach((element) => {
+              const href = element.getAttribute('href');
+              if (href && isValidArticleUrl(href)) {
+                articleLinks.add(href);
+              }
+            });
+          }
+          return Array.from(articleLinks);
+        });
+        
+        // Lấy danh sách các bài viết đã crawl trước đó
+        try {
+          const { data: existingArticles, error: queryError } = await this.supabase
+            .from('articles')
+            .select('source_url')
+            .in('source_url', Array.from(articleLinks));
+          
+          if (queryError) {
+            console.error('Lỗi khi kiểm tra bài viết đã tồn tại:', queryError);
+            throw queryError;
+          }
+          
+          const existingUrls = new Set(existingArticles?.map((a: { source_url: string }) => a.source_url) || []);
+          
+          // Lọc ra các bài viết mới chưa được crawl
+          const newArticleLinks = (Array.isArray(articleLinks) ? articleLinks : []).filter((link: string) => !existingUrls.has(link));
+          
+          console.log(`Có ${newArticleLinks.length} bài viết mới cần crawl`);
+          
+          // Giới hạn số lượng bài viết cần crawl
+          const linksToCrawl = newArticleLinks.slice(0, maxArticles);
+          
+          // Duyệt qua từng bài viết và lấy nội dung
+          const articles: Article[] = [];
+          
+          for (const link of linksToCrawl) {
+            try {
+              console.log(`[${new Date().toISOString()}] Đang xử lý bài viết: ${link}`);
+              
+              // Thử lấy nội dung bài viết
+              const article = await this.processArticle(link, category.name);
+              
+              if (article) {
+                articles.push(article);
+                console.log(`[${new Date().toISOString()}] Đã xử lý xong: ${article.title}`);
+                
+                // Lưu bài viết vào database sau mỗi lần xử lý thành công
+                try {
+                  await this.saveArticlesToDatabase([article]);
+                  console.log(`[${new Date().toISOString()}] Đã lưu bài viết vào database: ${article.title}`);
+                } catch (dbError) {
+                  console.error(`[${new Date().toISOString()}] Lỗi khi lưu bài viết vào database:`, dbError);
+                  // Tiếp tục xử lý các bài viết khác nếu có lỗi lưu database
+                }
+              }
+              
+              // Thêm delay ngẫu nhiên giữa các request để tránh bị chặn
+              const delayTime = Math.floor(1500 + Math.random() * 2000); // 1.5s - 3.5s
+              console.log(`[${new Date().toISOString()}] Chờ ${delayTime}ms trước khi xử lý bài viết tiếp theo...`);
+              await this.delay(delayTime);
+              
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : 'Lỗi không xác định';
+              console.error(`[${new Date().toISOString()}] Lỗi khi xử lý bài viết ${link}:`, errorMessage);
+              
+              // Tăng biến đếm lỗi
+              errorCount++;
+              
+              // Thêm thông tin lỗi vào thống kê
+              this.stats.errors.push({
+                url: link,
+                error: String(errorMessage || 'Lỗi không xác định')
+              });
+              
+              // Nếu vượt quá số lỗi cho phép, dừng crawl
+              if (errorCount >= maxErrors) {
+                console.error(`[${new Date().toISOString()}] Đã đạt tối đa số lỗi (${maxErrors}). Dừng crawl.`);
+                break;
+              }
+              
+              // Thêm delay khi có lỗi để tránh bị chặn
+              await this.delay(3000);
+            }
+          }
+          
+          // Cập nhật thống kê
+          this.stats.success += articles.length;
+          this.stats.failed += linksToCrawl.length - articles.length;
+          this.stats.totalCrawled += articles.length;
+          
+          console.log(`[${new Date().toISOString()}] Hoàn thành xử lý ${articles.length}/${linksToCrawl.length} bài viết`);
+          
+          return articles;
+        } catch (error) {
+          console.error('Lỗi khi lấy danh sách bài viết đã crawl:', error);
+          throw error;
+        }
+        
+      
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Lỗi không xác định';
+        console.error(`[${new Date().toISOString()}] Lỗi khi crawl chuyên mục ${category.name}:`, errorMessage);
+        
+        // Thêm thông tin lỗi vào thống kê
+        this.stats.errors.push({
+          url: category.path,
+          error: `Lỗi khi crawl chuyên mục: ${errorMessage}`
+        });
+        
+        errorCount++;
+        
+        if (errorCount >= maxErrors) {
+          console.error(`[${new Date().toISOString()}] Đã đạt tối đa số lỗi (${maxErrors}). Dừng crawl chuyên mục ${category.name}`);
+          return [];
+        }
+      } finally {
+        try {
+          // Đóng trang nếu tồn tại
+          if (page && !page.isClosed()) {
+            console.log(`[${new Date().toISOString()}] Đang đóng trang...`);
+            await page.close().catch(e => console.error('Lỗi khi đóng trang:', e));
+          }
+          
+          // Chỉ đóng trình duyệt nếu chúng ta tạo mới nó
+          if (browser && browser !== this.browser) {
+            console.log(`[${new Date().toISOString()}] Đang đóng trình duyệt...`);
+            await browser.close().catch(e => console.error('Lỗi khi đóng trình duyệt:', e));
+          }
+          
+          console.log(`[${new Date().toISOString()}] Đã dọn dẹp tài nguyên`);
+        } catch (cleanupError) {
+          console.error(`[${new Date().toISOString()}] Lỗi khi dọn dẹp tài nguyên:`, cleanupError);
+        }
+        }
+      }
+    }
+  }
+
+  /**
+   * Start the crawler
+   * @returns Promise containing the crawled articles
+   */
+  public async start(): Promise<Article[]> {
+    const articles: Article[] = [];
+    let errorCount = 0;
+    const maxErrors = 3;
+    this.isCrawling = true;
+    
+    try {
+      // Define categories to crawl
+      const categories = [
+        { name: 'News', path: '/news/trang-1.htm' },
+        { name: 'World', path: '/world/trang-1.htm' },
+        { name: 'Business', path: '/business/trang-1.htm' },
+        { name: 'Entertainment', path: '/entertainment/trang-1.htm' },
+        { name: 'Sports', path: '/sports/trang-1.htm' },
+        { name: 'Law', path: '/law/trang-1.htm' },
+        { name: 'Education', path: '/education/trang-1.htm' },
+        { name: 'Health', path: '/health/trang-1.htm' },
+        { name: 'Lifestyle', path: '/lifestyle/trang-1.htm' },
+        { name: 'Travel', path: '/travel/trang-1.htm' },
+        { name: 'Science', path: '/science/trang-1.htm' },
+        { name: 'Technology', path: '/technology/trang-1.htm' },
+        { name: 'Opinion', path: '/opinion/trang-1.htm' },
+        { name: 'Humor', path: '/humor/trang-1.htm' }
+      ];
+      
+      // Crawl each category
+      for (const category of categories) {
+        try {
+          console.log(`Crawling category: ${category.name}`);
+          const categoryArticles = await this.crawlCategory(category, 10);
+          articles.push(...categoryArticles);
+          
+          // Save articles to database if we have any
+          if (categoryArticles.length > 0) {
+            await this.saveArticlesToDatabase(categoryArticles);
+            console.log(`Saved ${categoryArticles.length} articles from category ${category.name}`);
+          }
+        } catch (error) {
+          console.error(`Error in category ${category.name}:`, error);
+          errorCount++;
+          
+          if (errorCount >= maxErrors) {
+            console.error('Too many errors, stopping crawler');
+            break;
+          }
+        }
+      }
+      
+      return articles;
+      
+    } catch (error) {
+      console.error('Error during crawling:', error);
+      throw error;
+    } finally {
+      this.isCrawling = false;
+    }
+  }
+
+  /**
+   * Stop the crawler
+   */
+  public stop(): void {
+    if (!this.isCrawling) {
+      console.log('Crawler is not running');
+      return;
+    }
+    
+    console.log('Stopping crawler...');
+    this.isCrawling = false;
+  }
+}
+
+// Global variable to track the crawler
+let activeCrawler: NewsCrawler | null = null;
+
+/**
+ * Start the crawler
+ */
+export function startCrawler(): void {
+  if (activeCrawler && (activeCrawler as any).isCrawling) {
+    console.log('Crawler is already running');
+    return;
+  }
+
+  const baseUrl = 'https://tuoitre.vn';
+  activeCrawler = new NewsCrawler(baseUrl, {
+    maxConcurrent: 3,
+    delayMs: 1500,
+    maxRetries: 3,
+    batchSize: 30,
+    pagesToCrawl: 3
+  });
+  
+  activeCrawler.start().then(articles => {
+    console.log(`✅ Crawler đã hoàn thành, thu thập được ${articles.length} bài viết`);
+  }).catch(error => {
+    console.error('❌ Lỗi khi chạy crawler:', error);
+  });
+}
+
+/**
+ * Dừng crawler
+ */
+export function stopCrawler(): void {
+  if (!activeCrawler) {
+    console.log('ℹ️ Không có crawler nào đang chạy');
+    return;
+  }
+  
+  activeCrawler.stop();
+  activeCrawler = null;
+  console.log('✅ Đã dừng crawler');
+}

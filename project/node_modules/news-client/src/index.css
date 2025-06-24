@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    color: #1f2937;
+    background-color: #f9fafb;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    line-height: 1.25;
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-gray-500;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-shadow hover:shadow-md;
+  }
+
+  .news-card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-1;
+  }
+
+  .input-field {
+    @apply w-full px-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors text-gray-700 text-sm;
+  }
+  
+  .btn-primary {
+    @apply bg-red-600 hover:bg-red-700 focus:ring-red-500 text-white font-medium py-2.5 px-4 rounded-lg transition-colors duration-200 w-full flex items-center justify-center;
+  }
+  
+  /* Pagination styles - Compact */
+  .pagination {
+    @apply flex items-center justify-center py-2 gap-0.5;
+  }
+  
+  .pagination-button {
+    @apply flex items-center justify-center w-7 h-7 text-xs font-medium rounded border transition-colors duration-150 mx-0.5;
+    min-width: 1.75rem;
+  }
+  
+  .pagination-button:not(.disabled):not(.active) {
+    @apply bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300;
+  }
+  
+  .pagination-button.active {
+    @apply bg-red-600 border-red-600 text-white font-semibold;
+  }
+  
+  .pagination-button.disabled {
+    @apply opacity-40 cursor-not-allowed text-gray-400 border-gray-200 bg-gray-100;
+  }
+  
+  .pagination-ellipsis {
+    @apply flex items-center justify-center w-7 h-7 text-xs text-gray-500 mx-0.5;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

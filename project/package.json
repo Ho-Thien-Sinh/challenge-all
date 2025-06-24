@@ -1,0 +1,26 @@
+{
+  "name": "news-website-workspace",
+  "version": "1.0.0",
+  "description": "News website with separate frontend and backend",
+  "private": true,
+  "type": "commonjs",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "start": "concurrently \"npm run start:server\" \"npm run start:client\"",
+    "start:client": "cd client && npm run preview",
+    "start:server": "cd server && npm start"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.3",
+    "concurrently": "^8.2.2"
+  }
+}
