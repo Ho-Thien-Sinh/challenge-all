@@ -17,7 +17,50 @@ router.use((req, res, next) => {
   next();
 });
 
-// Get list of articles
+/**
+ * @swagger
+ * /api/v1/articles:
+ *   get:
+ *     summary: Lấy danh sách bài viết
+ *     description: Lấy danh sách bài viết với phân trang và lọc theo danh mục
+ *     tags: [Articles]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Số lượng bài viết mỗi trang (tối đa 100)
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Lọc theo danh mục (tùy chọn)
+ *     responses:
+ *       200:
+ *         description: Danh sách bài viết
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Article'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         description: Lỗi request không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
 router.get('/', async (req: Request, res: Response<ArticleListResponse | ErrorResponse>) => {
     console.log('\n=== /articles Request ===');
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
@@ -207,7 +250,32 @@ type ErrorResponse = ApiResponse<null> & {
 // List of supported news sources
 const SUPPORTED_SOURCES = ['tuoitre', 'vnexpress'];
 
-// Get articles from all subcategories
+/**
+ * @swagger
+ * /api/v1/articles/all-categories:
+ *   get:
+ *     summary: Lấy bài viết từ tất cả danh mục con
+ *     description: Lấy bài viết từ tất cả các danh mục con hiện có
+ *     tags: [Articles]
+ *     responses:
+ *       200:
+ *         description: Danh sách bài viết từ tất cả danh mục con
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Article'
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Lỗi server khi lấy dữ liệu
+ */
 router.get('/all-categories', async (req: Request, res: Response<ApiResponse<Article[]>>) => {
     try {
         console.log('Bắt đầu lấy bài viết từ tất cả danh mục con...');
@@ -228,7 +296,66 @@ router.get('/all-categories', async (req: Request, res: Response<ApiResponse<Art
     }
 });
 
-// Get list of articles from external source
+/**
+ * @swagger
+ * /api/v1/articles/scrape/{source}:
+ *   get:
+ *     summary: Thu thập bài viết từ nguồn bên ngoài
+ *     description: Thu thập bài viết từ các nguồn tin tức bên ngoài như Tuổi Trẻ, VnExpress
+ *     tags: [Articles]
+ *     parameters:
+ *       - in: path
+ *         name: source
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [tuoitre, vnexpress]
+ *         description: Nguồn tin tức
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *           default: tin-moi
+ *         description: Danh mục tin tức
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Số lượng bài viết mỗi trang
+ *       - in: query
+ *         name: retry
+ *         schema:
+ *           type: integer
+ *           default: 3
+ *         description: Số lần thử lại khi gặp lỗi (tối đa 5 lần)
+ *     responses:
+ *       200:
+ *         description: Danh sách bài viết đã thu thập
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Article'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       400:
+ *         description: Tham số không hợp lệ hoặc nguồn không được hỗ trợ
+ *       500:
+ *         description: Lỗi server khi thu thập dữ liệu
+ */
 router.get('/scrape/:source', async (req: Request, res: Response<ApiResponse<Article[]>>) => {
     let browser: Browser | null = null;
     let page: Page | null = null;
@@ -333,7 +460,53 @@ router.get('/scrape/:source', async (req: Request, res: Response<ApiResponse<Art
     }
 });
 
-// Get articles by category
+/**
+ * @swagger
+ * /api/v1/articles/category/{categorySlug}:
+ *   get:
+ *     summary: Lấy bài viết theo danh mục
+ *     description: Lấy danh sách bài viết thuộc một danh mục cụ thể
+ *     tags: [Articles]
+ *     parameters:
+ *       - in: path
+ *         name: categorySlug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Đường dẫn danh mục
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Số lượng bài viết mỗi trang
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Số trang
+ *     responses:
+ *       200:
+ *         description: Danh sách bài viết theo danh mục
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Article'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       404:
+ *         description: Không tìm thấy danh mục
+ *       500:
+ *         description: Lỗi server
+ */
 router.get('/category/:categorySlug', async (req, res: Response<ApiResponse<Article[]>>) => {
     try {
         const { categorySlug } = req.params;
@@ -388,7 +561,37 @@ router.get('/category/:categorySlug', async (req, res: Response<ApiResponse<Arti
     }
 });
 
-// Get article details
+/**
+ * @swagger
+ * /api/v1/articles/{id}:
+ *   get:
+ *     summary: Lấy chi tiết bài viết
+ *     description: Lấy thông tin chi tiết của một bài viết theo ID
+ *     tags: [Articles]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của bài viết
+ *     responses:
+ *       200:
+ *         description: Thông tin chi tiết bài viết
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Article'
+ *       404:
+ *         description: Không tìm thấy bài viết
+ *       500:
+ *         description: Lỗi server
+ */
 router.get('/:id', async (req: Request, res: Response<ApiResponse<Article>>) => {
     try {
         const { id } = req.params;
@@ -421,7 +624,59 @@ router.get('/:id', async (req: Request, res: Response<ApiResponse<Article>>) => 
     }
 });
 
-// Create new article (only admin)
+/**
+ * @swagger
+ * /api/v1/articles:
+ *   post:
+ *     summary: Tạo bài viết mới (Admin)
+ *     description: Tạo một bài viết mới (yêu cầu quyền admin)
+ *     tags: [Articles]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - content
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: Tiêu đề bài viết
+ *               content:
+ *                 type: string
+ *                 description: Nội dung bài viết
+ *               category:
+ *                 type: string
+ *                 description: Danh mục bài viết
+ *               image_url:
+ *                 type: string
+ *                 format: url
+ *                 description: URL hình ảnh đại diện
+ *     responses:
+ *       201:
+ *         description: Bài viết đã được tạo thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Article'
+ *       400:
+ *         description: Thiếu thông tin bắt buộc
+ *       401:
+ *         description: Chưa xác thực
+ *       403:
+ *         description: Không có quyền thực hiện
+ *       500:
+ *         description: Lỗi server
+ */
 router.post('/', authenticate, isAdmin, async (req: Request, res: Response<ApiResponse<Article>>) => {
     try {
         const articleData = req.body;
@@ -461,11 +716,81 @@ router.post('/', authenticate, isAdmin, async (req: Request, res: Response<ApiRe
     }
 });
 
-// Update articles (only admin)
-// Endpoint to update all articles
+/**
+ * @swagger
+ * /api/v1/articles/update-articles:
+ *   post:
+ *     summary: Cập nhật tất cả bài viết (Admin)
+ *     description: Cập nhật tất cả bài viết từ nguồn tin tức (yêu cầu quyền admin)
+ *     tags: [Articles]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Cập nhật bài viết thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Chưa xác thực
+ *       403:
+ *         description: Không có quyền thực hiện
+ *       500:
+ *         description: Lỗi server khi cập nhật bài viết
+ */
 router.post('/update-articles', authenticate, isAdmin, updateArticles);
 
-// Update a specific article
+/**
+ * @swagger
+ * /api/v1/articles/{id}:
+ *   put:
+ *     summary: Cập nhật bài viết (Admin)
+ *     description: Cập nhật thông tin một bài viết (yêu cầu quyền admin)
+ *     tags: [Articles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của bài viết cần cập nhật
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Article'
+ *     responses:
+ *       200:
+ *         description: Bài viết đã được cập nhật
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Article'
+ *       400:
+ *         description: Dữ liệu không hợp lệ
+ *       401:
+ *         description: Chưa xác thực
+ *       403:
+ *         description: Không có quyền thực hiện
+ *       404:
+ *         description: Không tìm thấy bài viết
+ *       500:
+ *         description: Lỗi server
+ */
 router.put('/:id', authenticate, isAdmin, async (req: Request, res: Response<ApiResponse<Article>>) => {
     try {
         const { id } = req.params;
@@ -511,7 +836,43 @@ router.put('/:id', authenticate, isAdmin, async (req: Request, res: Response<Api
     }
 });
 
-// Delete article (only admin)
+/**
+ * @swagger
+ * /api/v1/articles/{id}:
+ *   delete:
+ *     summary: Xóa bài viết (Admin)
+ *     description: Xóa một bài viết (yêu cầu quyền admin)
+ *     tags: [Articles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của bài viết cần xóa
+ *     responses:
+ *       200:
+ *         description: Bài viết đã được xóa
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Chưa xác thực
+ *       403:
+ *         description: Không có quyền thực hiện
+ *       404:
+ *         description: Không tìm thấy bài viết
+ *       500:
+ *         description: Lỗi server
+ */
 router.delete('/:id', authenticate, isAdmin, async (req: Request, res: Response<ApiResponse<null>>) => {
     try {
         const { id } = req.params;
