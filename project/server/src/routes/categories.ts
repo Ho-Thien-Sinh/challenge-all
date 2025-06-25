@@ -6,7 +6,7 @@ type CategorySlug = typeof MAIN_CATEGORIES[number];
 
 const router = express.Router();
 
-// Lấy danh sách tất cả danh mục
+// Get list of all categories
 router.get('/', (req, res) => {
     try {
         const categories = MAIN_CATEGORIES.map((slug: CategorySlug) => ({

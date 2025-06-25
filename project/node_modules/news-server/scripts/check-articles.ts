@@ -12,7 +12,7 @@ async function checkArticles() {
   try {
     console.log('Đang kết nối đến Supabase...');
     
-    // Lấy danh sách tất cả các danh mục
+    // Get list of all categories
     const { data: categories, error: categoryError } = await supabase
       .from('articles')
       .select('category')
@@ -23,7 +23,7 @@ async function checkArticles() {
       return;
     }
 
-    // Đếm số lượng bài viết theo từng danh mục
+    // Count number of articles per category
     const categoryCounts: Record<string, number> = {};
     categories?.forEach(article => {
       categoryCounts[article.category] = (categoryCounts[article.category] || 0) + 1;
@@ -64,7 +64,7 @@ async function checkArticles() {
       }
     }
 
-    // Kiểm tra dữ liệu bị lỗi
+    // Check for data errors
     console.log('\n=== Kiểm tra dữ liệu lỗi ===');
     const { data: errorData } = await supabase
       .from('articles')

@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { Clock, User } from 'lucide-react';
+import { FaClock, FaUser } from 'react-icons/fa';
 
 interface Article {
   id: string | number;
@@ -13,7 +13,7 @@ interface Article {
   category: string;
   image_url?: string;
   published_at: string;
-  [key: string]: any; // Thêm index signature để tránh lỗi TypeScript
+  [key: string]: any; // Add index signature to avoid TypeScript error
 }
 
 interface NewsCardProps {
@@ -24,7 +24,7 @@ interface NewsCardProps {
 const NewsCard: React.FC<NewsCardProps> = ({ article, variant = 'default' }) => {
   const publishedDate = new Date(article.published_at);
 
-  // Hàm kiểm tra xem URL ảnh có hợp lệ không
+  // Function to check if image URL is valid
   const isValidImageUrl = (url: string | undefined): boolean => {
     if (!url) return false;
     try {
@@ -35,11 +35,11 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, variant = 'default' }) => 
     }
   };
 
-  // Lấy URL ảnh hoặc trả về null nếu không có ảnh hợp lệ
+  // Get image URL or return null if no valid image
   const getImageUrl = (): string | null => {
     if (isValidImageUrl(article.image_url)) return article.image_url || null;
     
-    // Thử trích xuất ảnh từ excerpt nếu có
+    // Try to extract image from excerpt if available
     if (article.excerpt) {
       const imgMatch = article.excerpt.match(/<img[^>]+src="([^">]+)"/);
       if (imgMatch && imgMatch[1] && isValidImageUrl(imgMatch[1])) {
@@ -53,7 +53,7 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, variant = 'default' }) => 
   const imageUrl = getImageUrl();
   const hasImage = !!imageUrl;
   
-  // Màu nền ngẫu nhiên cho placeholder
+  // Random background colors for placeholder
   const placeholderColors = [
     'bg-blue-100', 'bg-green-100', 'bg-yellow-100',
     'bg-pink-100', 'bg-purple-100', 'bg-indigo-100'
@@ -62,12 +62,12 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, variant = 'default' }) => 
     (article.title?.length || 0) % placeholderColors.length
   ];
   
-  // Lấy chữ cái đầu tiên của tiêu đề cho placeholder
+  // Get first letter of title for placeholder
   const placeholderText = article.title ? article.title.charAt(0).toUpperCase() : 'N';
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const target = e.target as HTMLImageElement;
-    // Thay thế bằng placeholder nếu có lỗi tải ảnh
+    // Replace with placeholder if image fails to load
     target.parentElement?.classList.add(randomColor);
     target.style.display = 'none';
     const placeholder = target.nextElementSibling as HTMLElement;
@@ -95,7 +95,8 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, variant = 'default' }) => 
             </>
           ) : (
             <div className={`w-full h-full ${randomColor} flex items-center justify-center`}>
-              <span className="text-4xl font-bold text-gray-700">{placeholderText}</span>
+              <FaClock className="w-4 h-4 mr-1 text-gray-500" />
+              <span>{placeholderText}</span>
             </div>
           )}
           <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
@@ -108,11 +109,11 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, variant = 'default' }) => 
             <p className="text-gray-200 mb-3 line-clamp-2">{article.summary}</p>
             <div className="flex items-center space-x-4 text-sm text-gray-300">
               <div className="flex items-center space-x-1">
-                <User size={16} />
+                <FaUser size={16} />
                 <span>{article.author}</span>
               </div>
               <div className="flex items-center space-x-1">
-                <Clock size={16} />
+                <FaClock size={16} />
                 <span>{format(publishedDate, 'dd/MM/yyyy HH:mm', { locale: vi })}</span>
               </div>
             </div>
@@ -154,11 +155,11 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, variant = 'default' }) => 
           <p className="text-gray-600 text-sm mb-3 line-clamp-2">{article.summary}</p>
           <div className="flex items-center space-x-4 text-xs text-gray-500">
             <div className="flex items-center space-x-1">
-              <User size={14} />
+              <FaUser size={14} />
               <span>{article.author}</span>
             </div>
             <div className="flex items-center space-x-1">
-              <Clock size={14} />
+              <FaClock size={14} />
               <span>{format(publishedDate, 'dd/MM/yyyy HH:mm', { locale: vi })}</span>
             </div>
           </div>

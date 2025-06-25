@@ -38,10 +38,10 @@ const Categories: React.FC = memo(() => {
         
         const apiUrl = new URL(`${import.meta.env.VITE_API_URL}/api/v1/categories`);
         
-        // Thêm API key vào query parameter
+        // Add API key to query parameter
         const apiKey = import.meta.env.VITE_API_KEY || 'news_app_12345_secure_key_67890';
         
-        // Tạo URL mới để tránh lặp lại query parameters
+        // Create new URL to avoid duplicate query parameters
         const finalUrl = new URL(apiUrl.toString());
         finalUrl.searchParams.set('apikey', apiKey);
         
@@ -56,7 +56,7 @@ const Categories: React.FC = memo(() => {
           credentials: 'include',
           cache: 'default',
           signal: controller.signal,
-          // Thêm header Authorization nếu cần
+          // Add Authorization header if needed
           // 'Authorization': `Bearer ${apiKey}`
         });
         

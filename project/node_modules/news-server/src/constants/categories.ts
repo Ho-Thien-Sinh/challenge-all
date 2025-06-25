@@ -2,21 +2,21 @@
  * Main categories for the news application
  */
 export const MAIN_CATEGORIES = [
-    'thoi-su',      // Thời sự
-    'the-gioi',     // Thế giới
-    'kinh-doanh',   // Kinh doanh
-    'giai-tri',     // Giải trí
-    'the-thao',     // Thể thao
-    'phap-luat',    // Pháp luật
-    'giao-duc',     // Giáo dục
-    'suc-khoe',     // Sức khỏe
-    'doi-song',     // Đời sống
-    'du-lich',      // Du lịch
-    'khoa-hoc',     // Khoa học
-    'cong-nghe',    // Công nghệ
-    'xe',           // Xe
-    'y-kien',       // Ý kiến
-    'tam-su'        // Tâm sự
+    'thoi-su',      // Current affairs
+    'the-gioi',     // World
+    'kinh-doanh',   // Business
+    'giai-tri',     // Entertainment
+    'the-thao',     // Sports
+    'phap-luat',    // Law
+    'giao-duc',     // Education
+    'suc-khoe',     // Health
+    'doi-song',     // Lifestyle
+    'du-lich',      // Travel
+    'khoa-hoc',     // Science
+    'cong-nghe',    // Technology
+    'xe',           // Vehicles
+    'y-kien',       // Opinion
+    'tam-su'        // Confessions
 ] as const;
 
 /**
@@ -25,54 +25,54 @@ export const MAIN_CATEGORIES = [
  */
 export const CATEGORY_IDS: Record<string, number> = {
     // Main categories
-    'thoi-su': 1,           // Thời sự
-    'the-gioi': 2,          // Thế giới
-    'kinh-doanh': 3,        // Kinh doanh
-    'giai-tri': 4,          // Giải trí
-    'the-thao': 5,          // Thể thao
-    'phap-luat': 6,         // Pháp luật
-    'giao-duc': 7,          // Giáo dục
-    'suc-khoe': 8,          // Sức khỏe
-    'doi-song': 9,          // Đời sống
-    'du-lich': 10,          // Du lịch
-    'khoa-hoc': 11,         // Khoa học
-    'cong-nghe': 12,        // Công nghệ
-    'xe': 13,               // Xe
-    'y-kien': 14,           // Ý kiến
-    'tam-su': 15,           // Tâm sự
-    'cuoi': 16,             // Cười
+    'thoi-su': 1,           // Current affairs
+    'the-gioi': 2,          // World
+    'kinh-doanh': 3,        // Business
+    'giai-tri': 4,          // Entertainment
+    'the-thao': 5,          // Sports
+    'phap-luat': 6,         // Law
+    'giao-duc': 7,          // Education
+    'suc-khoe': 8,          // Health
+    'doi-song': 9,          // Lifestyle
+    'du-lich': 10,          // Travel
+    'khoa-hoc': 11,         // Science
+    'cong-nghe': 12,        // Technology
+    'xe': 13,               // Vehicles
+    'y-kien': 14,           // Opinion
+    'tam-su': 15,           // Confessions
+    'cuoi': 16,             // Humor
     
     // Sub-categories
-    'the-gioi-tre': 17,     // Thế giới trẻ
-    'tam-long-nhan-ai': 18, // Tấm lòng nhân ái
-    'ban-doc': 19,          // Bạn đọc
-    'goc-nhin': 20,         // Góc nhìn
-    'tinh-yeu-gioi-tinh': 21, // Tình yêu giới tính
-    'am-thuc': 22,          // Ẩm thực
-    'lam-dep': 23,          // Làm đẹp
-    'thi-truong-tieu-dung': 24, // Thị trường tiêu dùng
-    'tinh-yeu': 25,         // Tình yêu
-    'doi-song-gia-dinh': 26, // Đời sống gia đình
-    'kham-pha': 27,         // Khám phá
-    'the-gioi-sao': 28,     // Thế giới sao
-    'the-gioi-do-day': 29,  // Thế giới đồ đạc
-    'the-gioi-tre-em': 30,  // Thế giới trẻ em
-    'the-gioi-gai-xinh': 31, // Thế giới gái xinh
-    'the-gioi-phim': 32,    // Thế giới phim
-    'the-gioi-nhac': 33,    // Thế giới nhạc
-    'the-gioi-thoi-trang': 34, // Thời trang
-    'the-gioi-sach': 35,    // Sách
-    'bat-dong-san': 36,     // Bất động sản
-    'tai-chinh': 37,        // Tài chính
-    'tuyen-sinh': 38,       // Tuyển sinh
-    'du-hoc': 39,           // Du học
-    'kien-thuc': 40,        // Kiến thức
-    'chuyen-la': 41,        // Chuyện lạ
-    'an-ninh-hinh-su': 42,  // An ninh hình sự
-    'phap-dinh': 43,        // Pháp đình
-    'the-thao-viet-nam': 44, // Thể thao Việt Nam
-    'bong-da': 45,          // Bóng đá
+    'the-gioi-tre': 17,     // Youth
+    'tam-long-nhan-ai': 18, // Kindness
+    'ban-doc': 19,          // Readers
+    'goc-nhin': 20,         // Perspectives
+    'tinh-yeu-gioi-tinh': 21, // Love and Sex
+    'am-thuc': 22,          // Cuisine
+    'lam-dep': 23,          // Beauty
+    'thi-truong-tieu-dung': 24, // Consumer Market
+    'tinh-yeu': 25,         // Love
+    'doi-song-gia-dinh': 26, // Family Life
+    'kham-pha': 27,         // Discovery
+    'the-gioi-sao': 28,     // Celebrity
+    'the-gioi-do-day': 29,  // Gadgets
+    'the-gioi-tre-em': 30,  // Kids
+    'the-gioi-gai-xinh': 31, // Beautiful Girls
+    'the-gioi-phim': 32,    // Movies
+    'the-gioi-nhac': 33,    // Music
+    'the-gioi-thoi-trang': 34, // Fashion
+    'the-gioi-sach': 35,    // Books
+    'bat-dong-san': 36,     // Real Estate
+    'tai-chinh': 37,        // Finance
+    'tuyen-sinh': 38,       // Admissions
+    'du-hoc': 39,           // Study Abroad
+    'kien-thuc': 40,        // Knowledge
+    'chuyen-la': 41,        // Weird News
+    'an-ninh-hinh-su': 42,  // Criminal Security
+    'phap-dinh': 43,        // Court
+    'the-thao-viet-nam': 44, // Vietnamese Sports
+    'bong-da': 45,          // Football
     'tennis': 46,           // Tennis
     'golf': 47,             // Golf
-    'the-thao-khac': 48    // Thể thao khác
+    'the-thao-khac': 48    // Other Sports
 };

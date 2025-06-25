@@ -21,19 +21,19 @@ export const categories: Category[] = [
   { id: 'xe', name: 'Xe', slug: 'xe' }
 ];
 
-// Map từ slug sang tên đầy đủ của danh mục
+// Map from slug to full category name
 export const getCategoryName = (slug: string): string => {
   const category = categories.find(cat => cat.slug === slug);
   return category ? category.name : 'Không xác định';
 };
 
-// Map từ tên đầy đủ sang slug
+// Map from full name to slug
 export const getCategorySlug = (name: string): string => {
   const category = categories.find(cat => cat.name === name);
   return category ? category.slug : '';
 };
 
-// Lấy thông tin danh mục từ slug
+// Get category information from slug
 export const getCategoryBySlug = (slug: string): Category | undefined => {
   return categories.find(cat => cat.slug === slug);
 };
@@ -43,7 +43,7 @@ export const getCategoryByName = (name: string): Category | undefined => {
   return categories.find(cat => cat.name === name);
 };
 
-// Kiểm tra xem một slug có hợp lệ không
+// Check if a slug is valid
 export const isValidCategorySlug = (slug: string): boolean => {
   return categories.some(cat => cat.slug === slug);
 };

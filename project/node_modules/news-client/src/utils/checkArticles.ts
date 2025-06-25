@@ -4,7 +4,7 @@ export async function checkArticles() {
   try {
     console.log('Đang kiểm tra dữ liệu bài viết...');
     
-    // Lấy 5 bài viết mới nhất
+    // Get 5 most recent articles
     const { data: articles, error } = await supabase
       .from('articles')
       .select('*')
@@ -29,10 +29,10 @@ export async function checkArticles() {
         console.log('Danh mục:', article.category);
         console.log('Ngày đăng:', article.published_at);
         
-        // Kiểm tra xem có trích dẫn không
+        // Check if there's an excerpt
         if (article.excerpt) {
           console.log('Có trích dẫn (excerpt)');
-          // Kiểm tra xem có ảnh trong excerpt không
+          // Check if there's an image in the excerpt
           const imgMatch = article.excerpt.match(/<img[^>]+src="([^">]+)"/);
           if (imgMatch && imgMatch[1]) {
             console.log('Tìm thấy ảnh trong excerpt:', imgMatch[1]);
@@ -51,5 +51,5 @@ export async function checkArticles() {
   }
 }
 
-// Chạy hàm kiểm tra
+// Run the check function
 checkArticles();

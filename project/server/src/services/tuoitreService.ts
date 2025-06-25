@@ -19,7 +19,7 @@ interface ExtendedArticle extends Omit<Article, 'image' | 'slug' | 'description'
     updated_at: string;
 }
 
-// Định nghĩa kiểu dữ liệu cho response từ API Tuổi Trẻ
+// Define TuoiTreArticle interface for API response
 interface TuoiTreArticle {
     id?: string | number;
     title?: string;
@@ -41,13 +41,13 @@ interface TuoiTreArticle {
     category?: string;
     author?: string;
     author_name?: string;
-    [key: string]: any; // Cho phép các trường khác
+    [key: string]: any; // Allow additional fields
 }
 
 const BASE_URL = 'https://tuoitre.vn';
 const API_BASE = 'https://api.tuoitre.vn/api';
 
-// Danh sách user agents để xoay vòng
+// List of user agents to rotate
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36',
@@ -55,12 +55,12 @@ const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',
 ];
 
-// Lấy ngẫu nhiên một user agent
+// Get random user agent
 const getRandomUserAgent = (): string => {
     return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 };
 
-// Hàm hỗ trợ: Lấy URL hình ảnh đầy đủ
+// Helper function: Get full image URL
 const getImageUrl = (imagePath: string): string => {
     if (!imagePath) return 'https://via.placeholder.com/300x200?text=No+Image';
     if (imagePath.startsWith('http')) return imagePath;
@@ -68,14 +68,14 @@ const getImageUrl = (imagePath: string): string => {
     return `${BASE_URL}/${imagePath}`;
 };
 
-// Hàm hỗ trợ: Lấy URL bài viết đầy đủ
+// Helper function: Get full article URL
 const getArticleUrl = (url: string, categorySlug: string, itemId: string | number): string => {
     if (url && url.startsWith('http')) return url;
     if (url && url.startsWith('/')) return `${BASE_URL}${url}`;
     return `${BASE_URL}/${categorySlug}/${url || itemId}`;
 };
 
-// Hàm hỗ trợ: Lấy tên danh mục từ slug
+// Helper function: Get category name from slug
 const getCategoryName = (slug: string): string => {
     const categoryMap: Record<string, string> = {
         'thoi-su': 'Thời sự',
@@ -97,7 +97,7 @@ const getCategoryName = (slug: string): string => {
     return categoryMap[slug] || 'Tin tức';
 };
 
-// Hàm hỗ trợ: Trả về dữ liệu mẫu
+// Helper function: Return sample articles
 const getSampleArticles = (categorySlug: string): ExtendedArticle[] => {
     const categoryName = getCategoryName(categorySlug);
     return [
@@ -140,7 +140,7 @@ const getSampleArticles = (categorySlug: string): ExtendedArticle[] => {
     ];
 };
 
-// Hàm kiểm tra và lấy dữ liệu từ object
+// Helper function: Check and get data from object
 const getArrayFromData = (obj: any, path: string): TuoiTreArticle[] | null => {
     try {
         const value = path ? path.split('.').reduce((acc, key) => acc?.[key], obj) : obj;
@@ -154,14 +154,14 @@ export const getArticlesByCategory = async (categorySlug: string, limit: number 
     try {
         console.log(`Fetching articles for category: ${categorySlug}`);
         
-        // Các endpoint API có thể sử dụng
+        // List of API endpoints to try
         const endpoints = [
             `${API_BASE}/getlistcategorybyslug/${categorySlug}?page=1&limit=${limit}`,
             `${API_BASE}/GetListCategoryBySlug/${categorySlug}?page=1&limit=${limit}`,
             `${API_BASE}/v1/categories/${categorySlug}/articles?page=1&limit=${limit}`
         ];
 
-        // Thử từng endpoint cho đến khi thành công
+        // Try each endpoint until success
         for (const endpoint of endpoints) {
             try {
                 console.log(`Trying endpoint: ${endpoint}`);
@@ -177,13 +177,13 @@ export const getArticlesByCategory = async (categorySlug: string, limit: number 
                     timeout: 10000
                 });
 
-                // Xử lý dữ liệu trả về
+                // Process returned data
                 let articlesData: TuoiTreArticle[] = [];
                 const data = response.data;
                 
-                // Thử các cấu trúc dữ liệu có thể có
+                // Try possible data structures
                 const possiblePaths = [
-                    '', // data là mảng
+                    '',
                     'data',
                     'items',
                     'articles',
@@ -206,17 +206,17 @@ export const getArticlesByCategory = async (categorySlug: string, limit: number 
                 }
 
 
-                // Log cấu trúc dữ liệu để debug
+                // Log raw data structure for debugging
                 console.log('Raw data structure:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
                 
                 if (articlesData.length > 0) {
                     console.log(`Found ${articlesData.length} articles`);
                     
-                    // Chuyển đổi dữ liệu về định dạng thống nhất
+                    // Convert data to unified format
                     const formattedArticles = await Promise.all(articlesData
                         .filter((item): item is TuoiTreArticle => item !== null && typeof item === 'object')
                         .map(async (item, index) => {
-                            // Lấy URL chi tiết bài viết để lấy ảnh gốc
+                            // Get article URL to fetch original image
                             let articleImage = '';
                             const articleUrl = getArticleUrl(
                                 item.url || item.link || '', 
@@ -225,7 +225,7 @@ export const getArticlesByCategory = async (categorySlug: string, limit: number 
                             );
                             
                             try {
-                                // Thử lấy ảnh từ bài viết chi tiết
+                                // Try to fetch image from article details
                                 const response = await axios.get(articleUrl, {
                                     headers: {
                                         'User-Agent': getRandomUserAgent(),
@@ -235,7 +235,7 @@ export const getArticlesByCategory = async (categorySlug: string, limit: number 
                                     timeout: 10000
                                 });
                                 
-                                // Phân tích HTML để lấy ảnh chính
+                                // Analyze HTML to get main image
                                 const $ = cheerio.load(response.data);
                                 articleImage = $('meta[property="og:image"]').attr('content') || 
                                              $('meta[name="twitter:image"]').attr('content') ||
@@ -246,7 +246,7 @@ export const getArticlesByCategory = async (categorySlug: string, limit: number 
                                              $('img[itemprop="image"]').attr('src') ||
                                              '';
                                 
-                                // Đảm bảo URL ảnh là đầy đủ
+                                // Ensure image URL is complete
                                 if (articleImage && !articleImage.startsWith('http')) {
                                     articleImage = new URL(articleImage, BASE_URL).toString();
                                 }
@@ -254,7 +254,7 @@ export const getArticlesByCategory = async (categorySlug: string, limit: number 
                                 console.error(`Error fetching article details from ${articleUrl}:`, error);
                             }
                             
-                            // Nếu không lấy được ảnh từ bài viết chi tiết, sử dụng ảnh từ danh sách
+                            // If no image is found from article details, use image from list
                             if (!articleImage) {
                                 articleImage = getImageUrl(item.thumbnail || item.image || item.avatar || '');
                             }
@@ -289,19 +289,19 @@ export const getArticlesByCategory = async (categorySlug: string, limit: number 
             } catch (error) {
                 const err = error as Error;
                 console.error(`Error with endpoint ${endpoint}:`, err.message);
-                // Tiếp tục thử endpoint tiếp theo
+                // Continue to next endpoint
                 continue;
             }
         }
 
-        // Nếu không tìm thấy dữ liệu, trả về dữ liệu mẫu
+        // If no data found, return sample data
         console.log('No articles found, returning sample data');
         return getSampleArticles(categorySlug);
         
     } catch (error) {
         const err = error as Error;
         console.error('Error in getArticlesByCategory:', err);
-        // Trả về dữ liệu mẫu nếu có lỗi
+        // Return sample data if error
         return getSampleArticles(categorySlug);
     }
 };

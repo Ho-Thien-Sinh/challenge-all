@@ -2,18 +2,18 @@ import { useEffect, memo, useCallback } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import Categories from './Categories';
 import { 
-  Home, 
-  Globe, 
-  Briefcase, 
-  Zap, 
-  BookOpen, 
-  HeartPulse,
-  Smile,
-  Atom,
-  Plane,
-  Car,
-  X
-} from 'lucide-react';
+  FaHome,
+  FaGlobe,
+  FaBriefcase,
+  FaBolt,
+  FaBookOpen,
+  FaHeartbeat,
+  FaSmile,
+  FaAtom,
+  FaPlane,
+  FaCar,
+  FaTimes
+} from 'react-icons/fa';
 
 // Styles are now in CSS modules
 
@@ -25,7 +25,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = memo(({ isOpen, onClose }) => {
   const location = useLocation();
 
-  // Đóng menu khi chuyển trang
+  // Close menu when page changes
   useEffect(() => {
     onClose();
   }, [location.pathname, onClose]);
@@ -34,52 +34,52 @@ const Sidebar: React.FC<SidebarProps> = memo(({ isOpen, onClose }) => {
     { 
       path: '/',
       name: 'Trang chủ',
-      icon: Home
+      icon: FaHome
     },
     { 
       path: '/the-gioi',
       name: 'Thế giới',
-      icon: Globe
+      icon: FaGlobe
     },
     { 
       path: '/kinh-doanh',
       name: 'Kinh doanh',
-      icon: Briefcase
+      icon: FaBriefcase
     },
     { 
       path: '/the-thao',
       name: 'Thể thao',
-      icon: Zap
+      icon: FaBolt
     },
     { 
       path: '/giao-duc',
       name: 'Giáo dục',
-      icon: BookOpen
+      icon: FaBookOpen
     },
     { 
       path: '/suc-khoe',
       name: 'Sức khỏe',
-      icon: HeartPulse
+      icon: FaHeartbeat
     },
     { 
       path: '/giai-tri',
       name: 'Giải trí',
-      icon: Smile
+      icon: FaSmile
     },
     { 
       path: '/khoa-hoc',
       name: 'Khoa học',
-      icon: Atom
+      icon: FaAtom
     },
     { 
       path: '/du-lich',
       name: 'Du lịch',
-      icon: Plane
+      icon: FaPlane
     },
     { 
       path: '/xe',
       name: 'Xe',
-      icon: Car
+      icon: FaCar
     },
   ] as const;
 
@@ -131,7 +131,7 @@ const Sidebar: React.FC<SidebarProps> = memo(({ isOpen, onClose }) => {
             className="lg:hidden p-2 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
             aria-label="Đóng menu"
           >
-            <X size={20} />
+            <FaTimes size={20} />
           </button>
         </div>
         

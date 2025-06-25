@@ -17,7 +17,7 @@ router.use((req, res, next) => {
   next();
 });
 
-// Lấy danh sách bài viết
+// Get list of articles
 router.get('/', async (req: Request, res: Response<ArticleListResponse | ErrorResponse>) => {
     console.log('\n=== /articles Request ===');
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
@@ -204,10 +204,10 @@ type ErrorResponse = ApiResponse<null> & {
     message: string;
 };
 
-// Danh sách các nguồn tin được hỗ trợ
+// List of supported news sources
 const SUPPORTED_SOURCES = ['tuoitre', 'vnexpress'];
 
-// Lấy bài viết từ tất cả các danh mục con
+// Get articles from all subcategories
 router.get('/all-categories', async (req: Request, res: Response<ApiResponse<Article[]>>) => {
     try {
         console.log('Bắt đầu lấy bài viết từ tất cả danh mục con...');
@@ -228,7 +228,7 @@ router.get('/all-categories', async (req: Request, res: Response<ApiResponse<Art
     }
 });
 
-// Lấy danh sách bài viết từ nguồn bên ngoài
+// Get list of articles from external source
 router.get('/scrape/:source', async (req: Request, res: Response<ApiResponse<Article[]>>) => {
     let browser: Browser | null = null;
     let page: Page | null = null;
@@ -272,7 +272,7 @@ router.get('/scrape/:source', async (req: Request, res: Response<ApiResponse<Art
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
                 console.log(`Lấy bài viết (lần thử ${attempt + 1}/${maxRetries})...`);
-                // Khởi tạo trình duyệt nếu chưa có
+                // Initialize browser if not already initialized
                 if (!browser) {
                     browser = await launchBrowser();
                     if (!browser) {
@@ -280,7 +280,7 @@ router.get('/scrape/:source', async (req: Request, res: Response<ApiResponse<Art
                     }
                 }
                 
-                // Gọi hàm lấy bài viết từ service
+                // Call service function to get articles
                 const { articles, hasMore } = await getArticlesByCategory(
                     categorySlug, 
                     Number(limit), 
@@ -316,7 +316,7 @@ router.get('/scrape/:source', async (req: Request, res: Response<ApiResponse<Art
             }
         }
         
-        // Nếu đến đây tức là đã thử lại đủ số lần mà vẫn lỗi
+        // If we get here, it means we've retried enough times and still failed
         throw lastError || new Error('Không thể lấy bài viết');
         
     } catch (error) {
@@ -333,7 +333,7 @@ router.get('/scrape/:source', async (req: Request, res: Response<ApiResponse<Art
     }
 });
 
-// Lấy bài viết theo danh mục
+// Get articles by category
 router.get('/category/:categorySlug', async (req, res: Response<ApiResponse<Article[]>>) => {
     try {
         const { categorySlug } = req.params;
@@ -347,7 +347,7 @@ router.get('/category/:categorySlug', async (req, res: Response<ApiResponse<Arti
             });
         }
         
-        // Kiểm tra danh mục tồn tại
+        // Check if category exists
         if (!Object.keys(categorySlugMap).includes(categorySlug)) {
             return res.status(404).json({
                 success: false,
@@ -363,7 +363,7 @@ router.get('/category/:categorySlug', async (req, res: Response<ApiResponse<Arti
                 Number(page)
             );
             
-            // Không cần cache ở đây vì đã xử lý trong service
+            // No need to cache here since it's already handled in the service
             res.json({
                 success: true,
                 data: articles,
@@ -388,7 +388,7 @@ router.get('/category/:categorySlug', async (req, res: Response<ApiResponse<Arti
     }
 });
 
-// Lấy chi tiết bài viết
+// Get article details
 router.get('/:id', async (req: Request, res: Response<ApiResponse<Article>>) => {
     try {
         const { id } = req.params;
@@ -421,12 +421,12 @@ router.get('/:id', async (req: Request, res: Response<ApiResponse<Article>>) => 
     }
 });
 
-// Tạo bài viết mới (chỉ admin)
+// Create new article (only admin)
 router.post('/', authenticate, isAdmin, async (req: Request, res: Response<ApiResponse<Article>>) => {
     try {
         const articleData = req.body;
         
-        // Kiểm tra các trường bắt buộc
+        // Check required fields
         if (!articleData.title || !articleData.content) {
             return res.status(400).json({
                 success: false,
@@ -434,7 +434,7 @@ router.post('/', authenticate, isAdmin, async (req: Request, res: Response<ApiRe
             });
         }
         
-        // Thêm vào cơ sở dữ liệu
+        // Add to database
         const { data: article, error } = await supabase
             .from('articles')
             .insert([{
@@ -461,17 +461,17 @@ router.post('/', authenticate, isAdmin, async (req: Request, res: Response<ApiRe
     }
 });
 
-// Cập nhật bài viết (chỉ admin)
-// Endpoint để cập nhật tất cả bài viết
+// Update articles (only admin)
+// Endpoint to update all articles
 router.post('/update-articles', authenticate, isAdmin, updateArticles);
 
-// Cập nhật một bài viết cụ thể
+// Update a specific article
 router.put('/:id', authenticate, isAdmin, async (req: Request, res: Response<ApiResponse<Article>>) => {
     try {
         const { id } = req.params;
         const articleData = req.body;
         
-        // Kiểm tra bài viết tồn tại
+        // Check if article exists
         const { data: existingArticle, error: fetchError } = await supabase
             .from('articles')
             .select('id')
@@ -485,7 +485,7 @@ router.put('/:id', authenticate, isAdmin, async (req: Request, res: Response<Api
             });
         }
         
-        // Cập nhật bài viết
+        // Update article
         const { data: article, error } = await supabase
             .from('articles')
             .update({
@@ -511,12 +511,12 @@ router.put('/:id', authenticate, isAdmin, async (req: Request, res: Response<Api
     }
 });
 
-// Xóa bài viết (chỉ admin)
+// Delete article (only admin)
 router.delete('/:id', authenticate, isAdmin, async (req: Request, res: Response<ApiResponse<null>>) => {
     try {
         const { id } = req.params;
         
-        // Xóa khỏi cơ sở dữ liệu
+        // Delete from database
         const { error } = await supabase
             .from('articles')
             .delete()

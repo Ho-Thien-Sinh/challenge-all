@@ -8,7 +8,7 @@ declare global {
   var __supabaseClient: SupabaseClient | undefined;
 }
 
-// Cấu hình transporter cho nodemailer
+// Configure nodemailer transporter
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -17,7 +17,7 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Interface cho người dùng
+// User interface
 interface User {
     id: string;
     email: string;
@@ -26,7 +26,7 @@ interface User {
     verification_token?: string;
 }
 
-// Hàm khởi tạo và lấy instance của Supabase client
+// Function to initialize and get Supabase client instance
 const getSupabase = (): SupabaseClient => {
   if (global.__supabaseClient) {
     return global.__supabaseClient;
@@ -51,7 +51,7 @@ const supabase = {
   get from() {
     return getSupabase().from;
   },
-  // Thêm các method khác của Supabase client nếu cần
+  // Add other Supabase client methods if needed
   // ...
 } as unknown as SupabaseClient;
 
@@ -69,7 +69,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
             return res.status(401).json({ error: 'Người dùng không tồn tại' });
         }
 
-        // Lấy thông tin vai trò từ bảng users
+        // Get role information from users table
         const { data: userData, error: userError } = await supabase
             .from('users')
             .select('role')
@@ -78,7 +78,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
         if (userError) throw userError;
 
-        // Gán thông tin người dùng vào request
+        // Attach user information to request
         req.user = {
             id: user.id,
             email: user.email || '', // Đảm bảo email không bị undefined
@@ -96,7 +96,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     }
 };
 
-// Middleware phân quyền admin
+// Admin authorization middleware
 export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
     if (req.user?.role !== 'admin') {
         return res.status(403).json({ error: 'Không có quyền truy cập' });
@@ -104,7 +104,7 @@ export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
     next();
 };
 
-// Hàm gửi email xác nhận
+// Function to send verification email
 export const sendVerificationEmail = async (email: string, token: string) => {
     const mailOptions = {
         from: process.env.EMAIL_USER,
@@ -121,7 +121,7 @@ export const sendVerificationEmail = async (email: string, token: string) => {
     await transporter.sendMail(mailOptions);
 };
 
-// Hàm tạo token xác nhận
+// Function to generate verification token
 export const generateVerificationToken = (): string => {
     return crypto.randomBytes(32).toString('hex');
 };

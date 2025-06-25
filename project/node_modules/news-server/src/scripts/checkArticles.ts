@@ -18,7 +18,7 @@ async function checkArticles() {
     try {
         console.log('🔍 Checking articles in Supabase...');
         
-        // Lấy tổng số bài viết
+        // Count total number of articles
         const { count, error: countError } = await supabase
             .from('articles')
             .select('*', { count: 'exact', head: true });
@@ -26,7 +26,7 @@ async function checkArticles() {
         if (countError) throw countError;
         console.log(`📊 Total articles: ${count}`);
         
-        // Lấy số lượng bài viết theo từng danh mục
+        // Get number of articles per category
         const { data: categories, error: categoryError } = await supabase
             .from('articles')
             .select('category')
@@ -34,7 +34,7 @@ async function checkArticles() {
             
         if (categoryError) throw categoryError;
         
-        // Đếm số lượng bài viết theo từng danh mục
+        // Count number of articles per category
         const categoryCounts = categories.reduce((acc, { category }) => {
             acc[category] = (acc[category] || 0) + 1;
             return acc;
@@ -43,7 +43,7 @@ async function checkArticles() {
         console.log('📋 Articles by category:');
         console.table(categoryCounts);
         
-        // Lấy 5 bài viết gần đây nhất
+        // Get 5 latest articles
         console.log('\n🆕 Latest 5 articles:');
         const { data: recentArticles, error: recentError } = await supabase
             .from('articles')

@@ -37,7 +37,7 @@ const handleError = (err: unknown, res: Response) => {
 
 const router = Router();
 
-// Đăng ký tài khoản user
+// Register user account
 router.post('/register', async (req: Request, res: Response) => {
   try {
     // Validate input
@@ -97,24 +97,24 @@ router.post('/register', async (req: Request, res: Response) => {
   }
 });
 
-// Yêu cầu đăng ký tài khoản admin
+// Request admin account
 router.post('/request-admin', authenticate, async (req: Request, res: Response) => {
     try {
-        // Kiểm tra req.user tồn tại
+        // Check if req.user exists
         if (!req.user) {
-            return res.status(401).json({ error: 'Không xác thực được người dùng' });
+            return res.status(401).json({ error: 'User not authenticated' });
         }
 
         const userId = req.user.id;
         const verificationToken = generateVerificationToken();
         
-        // Lưu token xác nhận
+        // Save verification token
         await supabase
             .from('users')
             .update({ verification_token: verificationToken })
             .eq('id', userId);
             
-        // Gửi email xác nhận
+        // Send verification email
         await sendVerificationEmail(req.user.email, verificationToken);
         
         res.json({ message: 'Đã gửi yêu cầu đăng ký admin' });
@@ -124,12 +124,12 @@ router.post('/request-admin', authenticate, async (req: Request, res: Response) 
     }
 });
 
-// Xác nhận tài khoản admin
+// Verify admin account
 router.get('/verify-admin', async (req: Request, res: Response) => {
     try {
         const { token } = req.query;
         
-        // Tìm user với token xác nhận
+        // Find user with verification token
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
@@ -140,7 +140,7 @@ router.get('/verify-admin', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Token không hợp lệ' });
         }
         
-        // Cập nhật quyền admin
+        // Update admin role
         await supabase
             .from('users')
             .update({ 
@@ -157,7 +157,7 @@ router.get('/verify-admin', async (req: Request, res: Response) => {
     }
 });
 
-// Đăng nhập
+// Login
 router.post('/login', async (req: Request, res: Response) => {
   try {
     // Validate input
@@ -213,7 +213,7 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 });
 
-// Đăng xuất
+// Logout
 router.post('/logout', authenticate, async (req: Request, res: Response) => {
   try {
     await supabase.auth.signOut();
@@ -224,11 +224,11 @@ router.post('/logout', authenticate, async (req: Request, res: Response) => {
   }
 });
 
-// Lấy thông tin user hiện tại
+// Get current user information
 router.get('/me', authenticate, async (req: Request, res: Response) => {
   try {
     if (!req.user?.id) {
-      return res.status(401).json({ error: 'Không xác thực được người dùng' });
+      return res.status(401).json({ error: 'User not authenticated' });
     }
     
     const { data: user, error } = await supabase

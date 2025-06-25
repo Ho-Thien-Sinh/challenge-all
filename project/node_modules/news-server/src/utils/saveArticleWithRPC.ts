@@ -2,7 +2,7 @@ import supabase from '../lib/supabase.js';
 import { Article } from '../types/article.js';
 
 /**
- * Hàm helper để lưu bài viết sử dụng RPC
+ * Helper function to save article using RPC
  */
 export async function saveArticleWithRPC(articleData: any, articleId: number): Promise<Article | null> {
     try {
@@ -48,8 +48,8 @@ export async function saveArticleWithRPC(articleData: any, articleId: number): P
         
         console.log('✅ Lưu bài viết thành công (RPC)');
         
-        // Nếu sử dụng RPC, data trả về có thể không phải là article đầy đủ
-        // Nên chúng ta sẽ lấy lại bài viết từ database
+        // If using RPC, data returned may not be a complete article
+        // So we will fetch the article from the database
         if (data) {
             const { data: savedArticle, error: fetchError } = await supabase
                 .from('articles')

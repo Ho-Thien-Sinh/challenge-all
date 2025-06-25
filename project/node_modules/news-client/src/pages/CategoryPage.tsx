@@ -27,15 +27,15 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categorySlug: propCategoryS
   const categorySlug = propCategorySlug || params['*'] || 'thoi-su';
   const searchQuery = searchParams.get('q') || '';
   
-  // Kiểm tra xem categorySlug có hợp lệ không
+  // Check if categorySlug is valid
   useEffect(() => {
     if (!isValidCategorySlug(categorySlug) && !searchQuery) {
-      // Nếu không phải là danh mục hợp lệ và không phải là tìm kiếm, chuyển hướng về trang chủ
+      // If not a valid category and not a search query, redirect to home
       navigate('/');
     }
   }, [categorySlug, searchQuery, navigate]);
 
-  // Hàm lấy tên hiển thị của danh mục
+  // Get category display name
   const getCategoryDisplayName = (slug: string): string => {
     if (searchQuery) return `Kết quả tìm kiếm cho "${searchQuery}"`;
     return getCategoryName(slug);
@@ -47,15 +47,15 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categorySlug: propCategoryS
       setLoading(true);
       setError(null);
       
-      // Tạo URL với các tham số tìm kiếm
+      // Create URL with search parameters
       const searchParams = new URLSearchParams({
         page: currentPage.toString(),
         limit: limit.toString()
       });
       
-      // Nếu có category hợp lệ, thêm vào tham số
+      // If valid category, add to parameters
       if (isValidCategorySlug(categorySlug)) {
-        // Sử dụng category slug để lấy tên danh mục tương ứng
+        // Use category slug to get corresponding category name
         const categoryName = getCategoryName(categorySlug);
         if (categoryName) {
           searchParams.set('category', categoryName);
@@ -71,17 +71,17 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categorySlug: propCategoryS
       const response = await getArticles(searchParams);
       console.log('API Response:', response);
       
-      // Kiểm tra nếu response là mảng (trường hợp lỗi từ API)
+      // Check if response is an array (API error case)
       if (Array.isArray(response)) {
-        throw new Error('Định dạng dữ liệu không hợp lệ từ máy chủ');
+        throw new Error('Invalid data format from server');
       }
       
-      // Kiểm tra nếu có lỗi từ API
+      // Check if API error
       if (!response.success) {
         throw new Error(response.error || response.message || 'Không thể tải bài viết');
       }
       
-      // Lấy dữ liệu từ response
+      // Get data from response
       const data = response.data || [];
       const total = response.pagination?.total || 0;
       const totalPages = response.pagination?.total_pages || Math.ceil(total / limit) || 1;
@@ -103,7 +103,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categorySlug: propCategoryS
   }, [currentPage, categorySlug, searchQuery, limit]);
 
   useEffect(() => {
-    // Chỉ gọi API nếu danh mục hợp lệ hoặc có từ khóa tìm kiếm
+    // Only call API if valid category or search query
     if (isValidCategorySlug(categorySlug) || searchQuery) {
       fetchArticles().catch(error => {
         console.error('Error fetching articles:', error);
@@ -120,7 +120,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categorySlug: propCategoryS
     setCurrentPage(1);
   }, [categorySlug, searchQuery]);
 
-  // Nếu không có danh mục hợp lệ và không có từ khóa tìm kiếm, không hiển thị gì
+  // If no valid category and no search query, do not display anything
   if (!isValidCategorySlug(categorySlug) && !searchQuery) {
     return null;
   }

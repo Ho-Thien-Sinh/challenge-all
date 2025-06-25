@@ -26,14 +26,14 @@ export const getArticles = async (req: Request, res: Response) => {
 export const getArticleDetail = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        // Ở đây bạn có thể triển khai lấy chi tiết bài viết nếu cần
+        // Implement article detail retrieval logic here if needed
         res.json({
             success: true,
             data: {
                 id,
                 title: 'Bài viết mẫu',
                 content: 'Nội dung bài viết mẫu',
-                // ... các trường khác
+                // ... other fields
             },
             message: 'Lấy chi tiết bài viết thành công'
         });
@@ -52,7 +52,7 @@ export const updateArticles = async (req: Request, res: Response) => {
     try {
         console.log('Bắt đầu cập nhật bài viết...');
         
-        // Gọi hàm startCrawler để bắt đầu quá trình crawl dữ liệu
+        // Call startCrawler to begin the data crawling process
         await startCrawler('https://tuoitre.vn');
         
         res.json({

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 
 interface PaginationProps {
   currentPage: number
@@ -11,7 +11,7 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
   const getVisiblePages = () => {
     const pages = [];
     
-    // Nếu tổng số trang ít hơn hoặc bằng 5, hiển thị tất cả
+    // If total pages is less than or equal to 5, display all pages
     if (totalPages <= 5) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
@@ -19,15 +19,15 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
       return pages;
     }
     
-    // Tính toán phạm vi trang cần hiển thị
+    // Calculate the range of pages to display
     if (currentPage <= 3) {
-      // Trang đầu: hiển thị 1, 2, 3, 4, ... last
+      // First page: display 1, 2, 3, 4, ... last
       pages.push(1, 2, 3, 4, '...', totalPages);
     } else if (currentPage >= totalPages - 2) {
-      // Trang cuối: hiển thị 1, ..., n-3, n-2, n-1, n
+      // Last page: display 1, ..., n-3, n-2, n-1, n
       pages.push(1, '...', totalPages-3, totalPages-2, totalPages-1, totalPages);
     } else {
-      // Ở giữa: hiển thị 1, ..., current-1, current, current+1, ..., last
+      // Middle page: display 1, ..., current-1, current, current+1, ..., last
       pages.push(1, '...', currentPage-1, currentPage, currentPage+1, '...', totalPages);
     }
     
@@ -43,7 +43,7 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
         disabled={currentPage === 1}
         className="pagination-button flex items-center disabled"
       >
-        <ChevronLeft size={16} />
+        <FaChevronLeft className="w-4 h-4" />
       </button>
 
       {getVisiblePages().map((page, index) => (
@@ -67,7 +67,7 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
         disabled={currentPage === totalPages}
         className="pagination-button flex items-center disabled"
       >
-        <ChevronRight size={16} />
+        <FaChevronRight className="w-4 h-4" />
       </button>
     </nav>
   )

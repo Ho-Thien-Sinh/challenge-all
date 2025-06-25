@@ -10,7 +10,7 @@ const Layout: React.FC = memo(() => {
       <div className="flex-1 pt-16 overflow-hidden">
         <main 
           className="h-full overflow-y-auto focus:outline-none"
-          tabIndex={0} // Cho phép focus vào main để bàn phím có thể scroll
+          tabIndex={0} // Allow focus on main for keyboard scrolling
         >
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">

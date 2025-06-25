@@ -67,7 +67,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // Import kiểu dữ liệu mở rộng
 import './types/express.d.js';
 
-// Kiểm tra các biến môi trường bắt buộc
+// Check required environment variables
 const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
@@ -81,7 +81,7 @@ console.log('✅ Đã tải cấu hình môi trường thành công');
 // Tăng giới hạn số lượng listeners
 process.setMaxListeners(50);
 
-// Xử lý khi có quá nhiều listeners
+// Handle MaxListenersExceededWarning
 process.on('warning', (warning) => {
   if (warning.name === 'MaxListenersExceededWarning') {
     console.warn('⚠️ Cảnh báo MaxListeners:', warning.message);
@@ -90,11 +90,11 @@ process.on('warning', (warning) => {
 
 // Environment variables already loaded above
 
-// Khởi tạo ứng dụng Express
+// Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Khởi tạo Supabase client
+// Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -252,13 +252,13 @@ app.use('*', (req, res) => {
   })
 })
 
-// Tăng giới hạn số lượng listeners
+// Increase maximum number of listeners
 process.setMaxListeners(20);
 
-// Khai báo biến server ở phạm vi module
+// Declare server variable in module scope
 let server: ReturnType<typeof app.listen> | null = null;
 
-// Khai báo kiểu global cho stopScheduler
+// Declare global type for stopScheduler
 declare global {
   namespace NodeJS {
     interface Global {
@@ -267,11 +267,11 @@ declare global {
   }
 }
 
-// Khởi tạo biến toàn cục
+// Declare global variable
 const globalAny = global as any;
 
 /**
- * Kiểm tra kết nối Supabase
+ * Check Supabase connection
  */
 async function checkSupabaseConnection() {
   try {
@@ -316,12 +316,12 @@ async function checkSupabaseConnection() {
 }
 
 /**
- * Xử lý tắt máy chủ một cách an toàn
+ * Handle graceful shutdown
  */
 function gracefulShutdown(signal: string) {
   console.log(`\n🛑 Nhận được tín hiệu ${signal}. Đang dọn dẹp và tắt máy chủ...`);
   
-  // Dừng crawler
+  // Stop crawler
   console.log('🛑 Đang dừng crawler...');
   stopCrawler();
   
@@ -354,10 +354,10 @@ function gracefulShutdown(signal: string) {
   }
 }
 
-// Khởi động máy chủ
+// Start server
 async function startServer() {
   try {
-    // Kiểm tra kết nối Supabase
+    // Check Supabase connection
     await checkSupabaseConnection();
     
     // Khởi động crawler
@@ -398,7 +398,7 @@ async function startServer() {
   }
 }
 
-// Khởi động ứng dụng
+// Start server
 startServer().catch(error => {
   console.error('❌ Lỗi nghiêm trọng:', error);
   process.exit(1);

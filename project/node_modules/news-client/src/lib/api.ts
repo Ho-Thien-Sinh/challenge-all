@@ -1,4 +1,4 @@
-// Debug: Kiểm tra các biến môi trường
+// Debug: Check environment variables
 console.log('Environment Variables:', {
   VITE_API_URL: import.meta.env.VITE_API_URL,
   VITE_API_KEY: import.meta.env.VITE_API_KEY ? '***' : 'MISSING',
@@ -18,17 +18,10 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   console.log('[API] Base URL:', API_URL);
   
   try {
-    // Tạo URL với API key
-    const separator = url.includes('?') ? '&' : '?';
-    const apiKeyParam = `apikey=${encodeURIComponent(API_KEY)}`;
-    
-    // Kiểm tra nếu URL đã có query parameters
-    const hasExistingParams = url.includes('?');
-    const urlWithKey = hasExistingParams 
-      ? `${url}&${apiKeyParam}`
-      : `${url}${separator}${apiKeyParam}`;
-    
-    const fullUrl = `${API_URL}${urlWithKey}`;
+    // Create URL to avoid modifying original URL
+    const fullUrl = url.startsWith('http') 
+      ? url 
+      : `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
     
     console.log('[API] Making request to:', fullUrl);
     
@@ -36,6 +29,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        'x-api-key': API_KEY,  // Gửi API key trong header
         ...(options.headers || {})
       },
       credentials: 'include' // Đảm bảo gửi cả cookies nếu cần
@@ -81,9 +75,9 @@ export const getArticles = async (params: URLSearchParams | {
     const searchParams = new URLSearchParams();
     const apiUrl = '/articles';
     
-    // Xử lý tham số đầu vào
+    // Process input parameters
     if (params instanceof URLSearchParams) {
-      // Tạo URL với các tham số từ URLSearchParams
+      // Create URL with parameters from URLSearchParams
       const queryString = params.toString();
       const fullUrl = queryString ? `${apiUrl}?${queryString}` : apiUrl;
       
@@ -92,14 +86,14 @@ export const getArticles = async (params: URLSearchParams | {
       const response = await fetchWithAuth(fullUrl);
       console.log('[API] Raw response:', response);
       
-      // Đảm bảo response có cấu trúc ApiResponse
+      // Ensure response has ApiResponse structure
       if (response && typeof response === 'object' && 'success' in response) {
         const apiResponse = response as ApiResponse<any>;
         console.log(`[API] Success: ${apiResponse.success}, Data length: ${Array.isArray(apiResponse.data) ? apiResponse.data.length : 'N/A'}`);
         return apiResponse;
       }
       
-      // Nếu response là mảng (kiểu cũ), chuyển đổi sang định dạng mới
+      // If response is an array (old format), convert to new format
       if (Array.isArray(response)) {
         console.log('[API] Legacy array response detected, converting to new format');
         return {
@@ -114,10 +108,10 @@ export const getArticles = async (params: URLSearchParams | {
         };
       }
       
-      // Nếu không phải mảng cũng không phải đối tượng hợp lệ
-      throw new Error('Định dạng dữ liệu không hợp lệ từ máy chủ');
+      // If not an array or valid object, throw error
+      throw new Error('Invalid data format from server');
     } else {
-      // Tạo URLSearchParams từ đối tượng tham số
+      // Create URLSearchParams from object parameters
       if (params.category) {
         searchParams.append('category', params.category);
         console.log('[API] Category filter:', params.category);
@@ -137,7 +131,7 @@ export const getArticles = async (params: URLSearchParams | {
       const response = await fetchWithAuth(fullUrl);
       console.log('[API] Raw response:', response);
       
-      // Xử lý tương tự như trên
+      // Process similar to above
       if (response && typeof response === 'object' && 'success' in response) {
         const apiResponse = response as ApiResponse<any>;
         console.log(`[API] Success: ${apiResponse.success}, Data length: ${Array.isArray(apiResponse.data) ? apiResponse.data.length : 'N/A'}`);
@@ -178,5 +172,6 @@ export const searchArticles = async (query: string, page: number = 1, limit: num
     limit: limit.toString()
   });
   
+  // Only use relative path because API_URL already has /api/v1/ prefix
   return fetchWithAuth(`/search?${params.toString()}`);
 };

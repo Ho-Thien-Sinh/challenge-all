@@ -4,10 +4,10 @@ import { MAIN_CATEGORIES } from './constants/categories.js';
 import articleService from './services/articleService.js';
 import { scrapeTuoiTreRSS } from './services/articleService.js';
 
-// Hàm kiểm tra cấu trúc bảng articles
+// Function to check table schema
 async function checkTableSchema() {
     try {
-        console.log('Kiểm tra cấu trúc bảng articles...');
+        console.log('Checking table schema...');
         const { data, error } = await supabase
             .from('information_schema.columns')
             .select('column_name, data_type, is_nullable')
@@ -27,11 +27,11 @@ async function checkTableSchema() {
 
 const { getArticlesByCategory, getCategoryFromSlug } = articleService;
 
-// Khởi tạo Supabase client
+// Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 if (!supabaseUrl || !supabaseKey) {
-    console.error('Lỗi: Thiếu cấu hình Supabase. Vui lòng kiểm tra biến môi trường SUPABASE_URL và SUPABASE_SERVICE_ROLE_KEY');
+    console.error('Error: Missing Supabase configuration. Please check the environment variables SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
     process.exit(1);
 }
 const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -41,21 +41,21 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     }
 });
 
-// Hàm cập nhật dữ liệu bài viết cho một danh mục
+// Function to update article data for a category
 async function updateCategoryArticles(categorySlug: string) {
     console.log(`[${new Date().toISOString()}] Bắt đầu cập nhật danh mục: ${categorySlug}`);
     
     try {
-        // Lấy bài viết mới nhất từ RSS feed
+        // Get the latest articles from RSS feed
         const articles = await scrapeTuoiTreRSS(categorySlug);
         
         if (articles && articles.length > 0) {
             console.log(`[${new Date().toISOString()}] Đã lấy được ${articles.length} bài viết từ RSS feed của danh mục ${categorySlug}`);
             
-            // Lưu các bài viết mới vào database
+            // Save new articles to database
             for (const article of articles) {
                 try {
-                    // Kiểm tra xem bài viết đã tồn tại chưa bằng source_url
+                    // Check if article already exists by source_url
                     const { data: existingArticle, error: selectError } = await supabase
                         .from('articles')
                         .select('id')
@@ -89,7 +89,7 @@ async function updateCategoryArticles(categorySlug: string) {
                             updated_at: new Date().toISOString()
                         } as Article;
                         
-                        // Thêm bài viết mới
+                        // Insert new article
                         const { error: insertError } = await supabase
                             .from('articles')
                             .insert([articleData]);
@@ -117,11 +117,11 @@ async function updateCategoryArticles(categorySlug: string) {
     }
 }
 
-// Hàm cập nhật dữ nhật dữ liệu cho tất cả các danh mục
+// Function to update article data for all categories
 async function updateAllCategories() {
     console.log(`[${new Date().toISOString()}] Bắt đầu cập nhật tất cả danh mục`);
     
-    // Duyệt qua tất cả các danh mục chính
+    // Iterate through all main categories
     for (const category of MAIN_CATEGORIES) {
         try {
             console.log(`Đang xử lý danh mục: ${category}`);
@@ -139,20 +139,20 @@ async function updateAllCategories() {
     console.log(`[${new Date().toISOString()}] Đã cập nhật xong tất cả danh mục`);
 }
 
-// Hàm khởi tạo lịch cập nhật
+// Function to start scheduler
 export function startScheduler(intervalMinutes: number = 30) {
     console.log(`[${new Date().toISOString()}] Khởi động scheduler, cập nhật mỗi ${intervalMinutes} phút`);
     
-    // Chạy ngay lần đầu
+    // Run first update immediately
     updateAllCategories().catch(console.error);
     
-    // Thiết lập lịch cập nhật định kỳ
+    // Set up regular updates
     const intervalMs = intervalMinutes * 60 * 1000;
     const intervalId = setInterval(() => {
         updateAllCategories().catch(console.error);
     }, intervalMs);
     
-    // Hàm dừng scheduler
+    // Function to stop scheduler
     return () => {
         clearInterval(intervalId);
         console.log(`[${new Date().toISOString()}] Đã dừng scheduler`);
@@ -165,7 +165,7 @@ export async function runScheduler(intervalMinutes?: number) {
     
     console.log(`[${new Date().toISOString()}] Khởi động scheduler từ dòng lệnh, cập nhật mỗi ${interval} phút`);
     
-    // Xử lý tín hiệu dừng chương trình
+    // Handle program shutdown signals
     const stopScheduler = startScheduler(interval);
     
     const handleShutdown = () => {

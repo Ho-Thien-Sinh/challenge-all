@@ -617,13 +617,13 @@ export class NewsCrawler {
         throw new Error('Trình duyệt chưa được khởi tạo');
       }
       
-      // Tạo một trang mới cho mỗi bài viết để tránh xung đột
+      // Create a new page for each article to avoid conflicts
       page = await this.browser.newPage();
       
-      // Cấu hình request/response
+      // Configure request/response
       await page.setRequestInterception(true);
       page.on('request', (req) => {
-        // Chặn các request không cần thiết để tăng tốc độ
+        // Block unnecessary requests to speed up loading
         const resourceType = req.resourceType();
         if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
           req.abort();
@@ -632,7 +632,7 @@ export class NewsCrawler {
         }
       });
       
-      // Xử lý lỗi trong quá trình tải trang
+      // Handle errors during page loading
       const navigationPromise = page.goto(articleUrl, { 
         waitUntil: ['domcontentloaded', 'networkidle2'],
         timeout: 60000 // 60 seconds
@@ -641,7 +641,7 @@ export class NewsCrawler {
         return null;
       });
       
-      // Thêm timeout riêng cho navigation
+      // Add timeout for navigation
       const timeoutPromise = new Promise<null>(resolve => 
         setTimeout(() => {
           console.error(`⏱️ Timeout khi tải trang: ${articleUrl}`);
@@ -649,7 +649,7 @@ export class NewsCrawler {
         }, 60000)
       );
       
-      // Chờ navigation hoặc timeout
+      // Wait for navigation or timeout
       const navigationResult = await Promise.race([navigationPromise, timeoutPromise]);
       
       if (!navigationResult) {

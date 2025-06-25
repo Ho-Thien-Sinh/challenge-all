@@ -1,5 +1,5 @@
 /**
- * Định nghĩa kiểu dữ liệu cho bài viết
+ * Define article interface
  */
 export interface Article {
     id: number | string;
@@ -23,7 +23,7 @@ export interface Article {
     createdAt?: string;   // For backward compatibility
     updated_at: string;   // Made required to match database
     updatedAt?: string;   // For backward compatibility
-    // Các trường tùy chọn
+    // Additional fields
     tags?: string[];
     views?: number;
     view_count?: number;
@@ -32,15 +32,15 @@ export interface Article {
     comments?: number;
     comment_count?: number;
     is_featured?: boolean;
-    // Các trường bổ sung
+    // Additional fields
     category_id?: number;
     original_id?: string;
-    // Các trường mở rộng
+    // Additional fields
     [key: string]: any;
 }
 
 /**
- * Định nghĩa kiểu dữ liệu cho danh mục
+ * Define category interface
  */
 export interface Category {
     id: string;
@@ -54,7 +54,7 @@ export interface Category {
 }
 
 /**
- * Định nghĩa kiểu dữ liệu cho phản hồi API
+ * Define API response interface
  */
 export interface ApiResponse<T> {
     success: boolean;
@@ -70,7 +70,7 @@ export interface ApiResponse<T> {
 }
 
 /**
- * Định nghĩa kiểu dữ liệu cho phân trang
+ * Define pagination parameters interface
  */
 export interface PaginationParams {
     page?: number;

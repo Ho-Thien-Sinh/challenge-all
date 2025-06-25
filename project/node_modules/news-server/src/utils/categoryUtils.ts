@@ -1,5 +1,5 @@
 /**
- * Bản đồ ánh xạ slug danh mục sang tên danh mục
+ * Map category slug to category name
  */
 export const categorySlugMap: Record<string, string> = {
     'thoi-su': 'Thời sự',
@@ -108,14 +108,14 @@ export const categorySlugMap: Record<string, string> = {
 };
 
 /**
- * Lấy tên danh mục từ slug
+ * Get category name from slug
  */
 export function getCategoryFromSlug(slug: string): string {
     return categorySlugMap[slug] || 'Tin tức';
 }
 
 /**
- * Xác định danh mục dựa trên tiêu đề, nội dung và URL ảnh
+ * Determine category based on title, content and image URL
  */
 export function determineCategory(title: string, content: string = '', imageUrl: string = ''): string {
     if (!title) return 'Tin tức';
@@ -124,10 +124,10 @@ export function determineCategory(title: string, content: string = '', imageUrl:
     const titleLower = title.toLowerCase();
     const imageUrlLower = imageUrl?.toLowerCase() || '';
     
-    // Điểm số cho từng danh mục
+    // Category scores
     const categoryScores: Record<string, number> = {};
     
-    // Danh sách từ khóa cho từng danh mục
+    // Category keywords
     const categoryKeywords: Record<string, {keywords: string[], weight: number}[]> = {
         'Thể thao': [
             { keywords: ['bóng đá', 'bóng rổ', 'tennis', 'cầu lông', 'bơi lội', 'điền kinh', 'thể thao'], weight: 3 },
@@ -191,14 +191,14 @@ export function determineCategory(title: string, content: string = '', imageUrl:
         ]
     };
     
-    // Tính điểm cho từng danh mục dựa trên tiêu đề và nội dung
+    // Calculate category score based on title and content
     for (const [category, keywordGroups] of Object.entries(categoryKeywords)) {
         let score = 0;
         
         for (const {keywords, weight} of keywordGroups) {
             for (const keyword of keywords) {
                 if (titleLower.includes(keyword)) {
-                    score += weight * 3; // Trọng số cao hơn nếu từ khóa có trong tiêu đề
+                    score += weight * 3; // Higher weight if keyword is in title
                 }
                 if (contentLower.includes(keyword)) {
                     score += weight;
@@ -206,7 +206,7 @@ export function determineCategory(title: string, content: string = '', imageUrl:
             }
         }
         
-        // Kiểm tra URL ảnh
+        // Check image URL
         const imageCategories: Record<string, string[]> = {
             'Thể thao': ['thethao', 'bongda', 'bongro', 'tennis', 'vandongvien', 'thethao247'],
             'Công nghệ': ['congnghe', 'dienthoai', 'laptop', 'smartphone', 'tech', 'gadget'],
@@ -221,7 +221,7 @@ export function determineCategory(title: string, content: string = '', imageUrl:
         
         for (const [cat, paths] of Object.entries(imageCategories)) {
             if (cat === category && paths.some(path => imageUrlLower.includes(path))) {
-                score += 5; // Thêm điểm nếu URL ảnh chứa từ khóa của danh mục
+                score += 5; // Add points if image URL contains category keywords
             }
         }
         
@@ -230,7 +230,7 @@ export function determineCategory(title: string, content: string = '', imageUrl:
         }
     }
     
-    // Tìm danh mục có điểm cao nhất
+    // Find category with highest score
     let bestCategory = 'Tin tức';
     let highestScore = 0;
     
@@ -241,6 +241,6 @@ export function determineCategory(title: string, content: string = '', imageUrl:
         }
     }
     
-    // Ngưỡng tối thiểu để xác định danh mục
+    // Minimum score to determine category
     return highestScore >= 3 ? bestCategory : 'Tin tức';
 }

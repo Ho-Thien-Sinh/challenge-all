@@ -25,7 +25,7 @@ const Home: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // Gọi API với các tham số tìm kiếm
+      // Call API with search parameters
       const searchParams = new URLSearchParams({
         page: currentPage.toString(),
         limit: limit.toString(),
@@ -43,7 +43,7 @@ const Home: React.FC = () => {
         throw new Error(response.error || 'Không thể tải bài viết');
       }
       
-      // API trả về dữ liệu trong response.data và pagination trong response.pagination
+      // API returns data in response.data and pagination in response.pagination
       const data = response.data || [];
       const total = response.pagination?.total || 0;
       const totalPages = response.pagination?.total_pages || 1;

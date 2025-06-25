@@ -17,7 +17,7 @@ async function checkArticles() {
   try {
     console.log('🔍 Đang kiểm tra dữ liệu bài viết...');
     
-    // Đếm tổng số bài viết
+    // Count total number of articles
     const { count, error: countError } = await supabase
       .from('articles')
       .select('*', { count: 'exact', head: true });
@@ -26,7 +26,7 @@ async function checkArticles() {
     
     console.log(`📊 Tổng số bài viết trong database: ${count}`);
     
-    // Lấy 5 bài viết mới nhất
+    // Get 5 latest articles
     const { data: latestArticles, error: articlesError } = await supabase
       .from('articles')
       .select('*')
@@ -45,8 +45,8 @@ async function checkArticles() {
       console.log(`   🔗 ${article.url}`);
     });
     
-    // Kiểm tra số bài viết theo danh mục
-    // Cách 2: Sử dụng RPC
+    // Check number of articles per category
+    // Way 2: Using RPC
 const { data: categories, error: catError } = await supabase
 .rpc('get_article_counts');
 

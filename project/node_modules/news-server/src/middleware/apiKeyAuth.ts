@@ -1,15 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 
-// Middleware xác thực API key
+// API key authentication middleware
 export const apiKeyAuth = (req: Request, res: Response, next: NextFunction) => {
   console.log('\n=== API Key Middleware ===');
   console.log('Request URL:', req.originalUrl);
   console.log('Request Method:', req.method);
   
-  // Danh sách API key hợp lệ (trong môi trường thực tế nên lưu trong biến môi trường)
+  // List of valid API keys (in a real environment, these should be stored in environment variables)
   const HARDCODED_API_KEYS = ['news_app_12345_secure_key_67890'];
   
-  // Lấy API key từ các nguồn khác nhau (header hoặc query param)
+  // Get API key from different sources (header or query parameter)
   const apiKey = 
     (req.headers['x-api-key'] as string) ||
     (req.headers['apikey'] as string) ||
@@ -20,7 +20,7 @@ export const apiKeyAuth = (req: Request, res: Response, next: NextFunction) => {
   console.log('\nAPI Key from request (raw):', JSON.stringify(apiKey));
   console.log('Valid API keys (hardcoded):', JSON.stringify(HARDCODED_API_KEYS));
   
-  // Nếu không có API key
+  // If no API key is provided
   if (!apiKey) {
     console.error('❌ No API key provided');
     return res.status(401).json({
@@ -34,19 +34,19 @@ export const apiKeyAuth = (req: Request, res: Response, next: NextFunction) => {
     });
   }
   
-  // Chuẩn hóa API key (loại bỏ khoảng trắng thừa và dấu ngoặc kép)
+  // Normalize API key (remove extra whitespace and quotes)
   const normalizedApiKey = apiKey.toString().trim().replace(/^["']|["']$/g, '');
   
-  // Kiểm tra API key có hợp lệ không
+  // Check if the API key is valid
   const isKeyValid = HARDCODED_API_KEYS.includes(normalizedApiKey);
   
   console.log('\nAPI Key Validation:');
   console.log('- Normalized API Key:', JSON.stringify(normalizedApiKey));
   console.log('- Is key valid?', isKeyValid);
   
-  // Nếu API key không hợp lệ
+  // If the API key is invalid
   if (!isKeyValid) {
-    // Log thêm thông tin debug
+    // Log additional debug information
     const keyDetails = {
       length: normalizedApiKey.length,
       first5: normalizedApiKey.substring(0, 5),
@@ -71,7 +71,7 @@ export const apiKeyAuth = (req: Request, res: Response, next: NextFunction) => {
     });
   }
   
-  // Nếu API key hợp lệ, chuyển sang middleware tiếp theo
+  // If the API key is valid, proceed to the next middleware
   console.log('✅ API Key validated successfully');
   next();
 };

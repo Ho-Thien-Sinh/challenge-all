@@ -13,13 +13,15 @@ import CategoryPage from './pages/CategoryPage';
 import NotFound from './pages/NotFound';
 import { categories } from './categories';
 import CheckArticlesPage from './pages/CheckArticlesPage';
+import CreateArticlePage from './pages/CreateArticlePage';
+import AdminUsersPage from './pages/AdminUsersPage';
 
 // Create the router configuration
 const router = createBrowserRouter([
   {
     path: '/',
     element: <Layout />,
-    errorElement: <NotFound />, // Hiển thị trang 404 khi có lỗi
+    errorElement: <NotFound />, // Show 404 page on error
     children: [
       { index: true, element: <Home /> },
       { path: 'login', element: <Login /> },
@@ -30,7 +32,7 @@ const router = createBrowserRouter([
         errorElement: <div className="p-4 text-red-600">Không tìm thấy bài viết</div>
       },
       { 
-        path: 'search', 
+        path: 'tim-kiem', 
         element: <Search />,
         errorElement: <div className="p-4 text-red-600">Lỗi tìm kiếm</div>
       },
@@ -45,9 +47,16 @@ const router = createBrowserRouter([
         element: <CategoryPage categorySlug={category.slug} />,
         errorElement: <div className="p-4 text-red-600">Lỗi tải danh mục</div>
       })),
-      // Route kiểm tra dữ liệu bài viết
+      // Route to check article data
       { path: '/check-articles', element: <CheckArticlesPage /> },
-      
+      // Route to create new article
+      { 
+        path: 'them-bai-bao', 
+        element: <CreateArticlePage />,
+        errorElement: <div className="p-4 text-red-600">Lỗi tải trang tạo bài viết</div>
+      },
+      // Route to manage users
+      { path: 'quan-ly-tai-khoan', element: <AdminUsersPage /> },
       // Catch all other routes
       { path: '*', element: <NotFound /> }
     ],

@@ -296,7 +296,7 @@ export async function getArticlesByCategory(
 }
 
 /**
- * Kiểm tra kết nối database
+ * Check database connection
  */
 export async function checkDatabaseConnection(): Promise<boolean> {
     try {
@@ -319,32 +319,32 @@ export async function checkDatabaseConnection(): Promise<boolean> {
 }
 
 /**
- * Lưu bài viết vào database
+ * Save article to database
  */
 export async function saveArticle(article: Omit<Article, 'id'> & { id?: number | string }): Promise<Article | null> {
     console.log('🔄 Đang lưu bài viết:', article.url || article.link);
     
     try {
-        // Kiểm tra kết nối database trước khi thực hiện
+        // Check database connection before saving
         const isConnected = await checkDatabaseConnection();
         if (!isConnected) {
             throw new Error('Không thể kết nối đến database');
         }
 
-        // Tạo slug nếu chưa có
+        // Generate slug if not provided
         const generateSlug = (title: string) => {
             if (!title) return 'bai-viet';
             return title
                 .toLowerCase()
-                .replace(/[^\w\s-]/g, '') // Xóa ký tự đặc biệt
-                .replace(/\s+/g, '-')       // Thay thế khoảng trắng bằng dấu gạch ngang
-                .replace(/--+/g, '-')        // Thay thế nhiều dấu gạch ngang liên tiếp bằng một dấu
-                .substring(0, 100);          // Giới hạn độ dài slug
+                .replace(/[^\w\s-]/g, '') // Remove special characters
+                .replace(/\s+/g, '-')       // Replace spaces with hyphens
+                .replace(/--+/g, '-')        // Replace multiple hyphens with a single hyphen
+                .substring(0, 100);          // Limit slug length
         };
 
-        // Tạo một đối tượng mới chỉ chứa các trường snake_case
+        // Create a new object containing only snake_case fields
         const articleData: Record<string, any> = {
-            // Các trường bắt buộc
+            // Required fields
             title: article.title || 'Không có tiêu đề',
             slug: article.slug || generateSlug(article.title || 'bai-viet'),
             content: article.content || '',
@@ -362,7 +362,7 @@ export async function saveArticle(article: Omit<Article, 'id'> & { id?: number |
             created_at: article.created_at || (article as any).createdAt || new Date().toISOString(),
             updated_at: new Date().toISOString(),
             
-            // Các trường tùy chọn
+            // Optional fields
             view_count: article.view_count || (article as any).views || 0,
             like_count: article.like_count || (article as any).likes || 0,
             comment_count: article.comment_count || (article as any).comments || 0,
@@ -371,14 +371,14 @@ export async function saveArticle(article: Omit<Article, 'id'> & { id?: number |
             summary: article.excerpt || (article as any).summary || ''
         };
 
-        // Xóa tất cả các trường có giá trị undefined hoặc null
+        // Remove all undefined, null, or empty string fields
         Object.keys(articleData).forEach(key => {
             if (articleData[key] === undefined || articleData[key] === null || articleData[key] === '') {
                 delete articleData[key];
             }
         });
 
-        // Log dữ liệu trước khi lưu (chỉ trong môi trường dev)
+        // Log article data before saving (only in dev environment)
         if (process.env.NODE_ENV !== 'production') {
             console.log('📝 Dữ liệu bài viết trước khi lưu:', {
                 title: articleData.title,
@@ -388,16 +388,16 @@ export async function saveArticle(article: Omit<Article, 'id'> & { id?: number |
         }
 
 
-        // Chuyển đổi ID sang number nếu cần
+        // Convert ID to number if needed
         const articleId = article.id ? (typeof article.id === 'string' ? parseInt(article.id, 10) || 0 : article.id) : 0;
         
-        // Thử upsert trực tiếp trước (không dùng RPC)
+        // Try upsert directly first (without using RPC)
         try {
             console.log('🔄 Đang thử upsert trực tiếp...');
             const { data: upsertData, error: upsertError } = await supabase
                 .from('articles')
                 .upsert(articleData, {
-                    onConflict: 'link',  // Sử dụng link làm khóa duy nhất
+                    onConflict: 'link',  // Use link as unique key
                     ignoreDuplicates: false
                 })
                 .select()
@@ -413,7 +413,7 @@ export async function saveArticle(article: Omit<Article, 'id'> & { id?: number |
                     sourceUrl: articleData.source_url || articleData.url || articleData.link
                 });
                 
-                // Nếu lỗi là do RLS, thử dùng RPC
+                // If error is due to RLS, try using RPC
                 if (upsertError.code === '42501') {
                     console.log('🔄 Thử dùng RPC thay thế...');
                     return await saveArticleWithRPC(articleData, articleId);
@@ -433,7 +433,7 @@ export async function saveArticle(article: Omit<Article, 'id'> & { id?: number |
                 sourceUrl: articleData.source_url || articleData.url || articleData.link
             });
             
-            // Thử dùng RPC nếu direct upsert thất bại
+            // Try using RPC if direct upsert fails
             return await saveArticleWithRPC(articleData, articleId);
         }
     } catch (error) {
@@ -528,7 +528,7 @@ async function scrapeTuoiTreRSS(categorySlug: string): Promise<Article[]> {
                     const description = item.description?.[0] || '';
                     const pubDate = item.pubDate?.[0] ? new Date(item.pubDate[0]) : new Date();
                     
-                    // Trích xuất ảnh từ excerpt nếu có
+                    // Extract image from excerpt if available
                     let imageUrl = '';
                     const imgMatch = description.match(/<img[^>]+src="([^">]+)"/);
                     if (imgMatch && imgMatch[1]) {
@@ -553,7 +553,7 @@ async function scrapeTuoiTreRSS(categorySlug: string): Promise<Article[]> {
                         url: url,
                         link: url,
                         source_url: url,
-                        source: 'Tuổi Trẻ', // Sửa lại từ 'tuoitre' thành 'Tuổi Trẻ' để thống nhất
+                        source: 'Tuổi Trẻ', // Change from 'tuoitre' to 'Tuổi Trẻ' to unify
                         category: category || 'uncategorized',
                         status: 'published',
                         published_at: pubDate?.toISOString() || new Date().toISOString(),
@@ -565,7 +565,7 @@ async function scrapeTuoiTreRSS(categorySlug: string): Promise<Article[]> {
                         comment_count: 0,
                         is_featured: false,
                         category_id: CATEGORY_IDS[categorySlug] || 0,
-                        tags: [], // Thêm trường tags
+                        tags: [], // Add tags field
                         slug: title ? title.toLowerCase()
                             .replace(/[^\w\s-]/g, '')
                             .replace(/\s+/g, '-')

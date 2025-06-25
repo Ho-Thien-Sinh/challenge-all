@@ -1,58 +1,29 @@
 import { memo, useCallback, useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Search, 
-  X, 
-  User, 
-  Home,
-  Clock, 
-  Star, 
-  ThumbsUp, 
-  Globe,
-  Briefcase,
-  BookOpen,
-  HeartPulse,
-  Smile,
-  Atom,
-  Plane,
-  Car
-} from 'lucide-react'; 
+import { FaSearch, FaTimes, FaUser, FaHome } from 'react-icons/fa';
+import { categories } from '../categories';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
-import { categories } from '../categories';
 
 interface HeaderProps {
-  // Không cần prop onMenuToggle nữa
+  // No need for onMenuToggle prop anymore
 }
 
-// Tạo danh sách các icon tương ứng với từng danh mục
-const CATEGORY_ICONS: Record<string, any> = {
-  'thoi-su': Clock,
-  'the-gioi': Globe,
-  'the-thao': ThumbsUp,
-  'giai-tri': Smile,
-  'cong-nghe': Atom,
-  'suc-khoe': HeartPulse,
-  'kinh-doanh': Briefcase,
-  'giao-duc': BookOpen,
-  'khoa-hoc': Atom,
-  'du-lich': Plane,
-  'xe': Car,
-};
-
-// Tạo NAV_ITEMS từ danh sách categories đã import
+// Create NAV_ITEMS from the imported categories list
 const NAV_ITEMS = [
-  { path: '/', name: 'Trang chủ', icon: Home },
+  { path: '/', name: 'Trang chủ', icon: FaHome },
   ...categories.map(category => ({
     path: category.path,
     name: category.name,
-    icon: CATEGORY_ICONS[category.slug] || Globe // Mặc định dùng Globe nếu không tìm thấy icon
+    icon: category.icon
   }))
 ];
 
 const Header: React.FC<HeaderProps> = memo(() => {
+  console.log('Header rendering...');
+  console.log('Current path:', window.location.pathname);
   const location = useLocation();
-  const { user, signOut, getUserDisplayName } = useAuth();
+  const { user, signOut, getUserDisplayName, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,7 +31,12 @@ const Header: React.FC<HeaderProps> = memo(() => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   
-  // Xử lý đăng xuất
+  // Define icon components with proper typing
+  const SearchIcon = FaSearch;
+  const XIcon = FaTimes;
+  const UserIcon = FaUser;
+
+  // Handle sign out
   const handleSignOut = useCallback(async () => {
     try {
       await signOut();
@@ -71,7 +47,7 @@ const Header: React.FC<HeaderProps> = memo(() => {
     }
   }, [signOut, navigate]);
 
-  // Đóng menu user khi click bên ngoài
+  // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
@@ -83,19 +59,19 @@ const Header: React.FC<HeaderProps> = memo(() => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Tự động focus vào ô tìm kiếm khi mở
+  // Auto-focus search input when opened
   useEffect(() => {
     if (isSearchExpanded && searchInputRef.current) {
       searchInputRef.current.focus();
     }
   }, [isSearchExpanded]);
 
-  // Kiểm tra đường dẫn hiện tại có trùng với menu không
+  // Check if current path matches menu item
   const isActive = (path: string) => 
     location.pathname === path || 
     (path !== '/' && location.pathname.startsWith(path));
 
-  // Xử lý tìm kiếm
+  // Handle search
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     const trimmedQuery = searchQuery.trim();
@@ -114,16 +90,18 @@ const Header: React.FC<HeaderProps> = memo(() => {
     setIsUserMenuOpen(!isUserMenuOpen);
   }, [isUserMenuOpen]);
 
+  // Function to close user menu
+  const closeUserMenu = useCallback(() => {
+    setIsUserMenuOpen(false);
+  }, []);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-red-700 text-white shadow-md">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
-            <Link 
-              to="/" 
-              className="text-white font-bold text-xl"
-            >
+            <Link to="/" className="text-white font-bold text-xl">
               Báo Mới
             </Link>
           </div>
@@ -155,9 +133,9 @@ const Header: React.FC<HeaderProps> = memo(() => {
               aria-label="Tìm kiếm"
             >
               {isSearchExpanded ? (
-                <X className="h-5 w-5" />
+                <XIcon className="h-5 w-5" />
               ) : (
-                <Search className="h-5 w-5" />
+                <SearchIcon className="h-5 w-5" />
               )}
             </button>
 
@@ -178,33 +156,52 @@ const Header: React.FC<HeaderProps> = memo(() => {
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   aria-label="Tìm kiếm"
                 >
-                  <Search className="h-4 w-4" />
+                  <SearchIcon className="h-4 w-4" />
                 </button>
               </form>
             </div>
 
             {/* Menu tài khoản */}
-            <div className="relative" ref={userMenuRef}>
-              <button
-                onClick={toggleUserMenu}
-                className="p-1.5 rounded-full text-white hover:bg-red-600"
-                aria-expanded={isUserMenuOpen}
-                aria-haspopup="true"
-                aria-label="Tài khoản"
-              >
-                <User className="h-6 w-6" />
-              </button>
-              
-              {/* Dropdown tài khoản */}
-              {isUserMenuOpen && (
-                <div 
-                  className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-50"
-                  role="menu"
-                  aria-orientation="vertical"
-                  aria-labelledby="user-menu"
-                >
-                  {user ? (
-                    <>
+            {user ? (
+              <div className="flex items-center space-x-2">
+                {isAdmin && (
+                  <>
+                    <Link
+                      to="/them-bai-bao"
+                      className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 text-sm rounded-full bg-white text-red-700 font-medium hover:bg-red-50 hover:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 border border-red-200"
+                    >
+                      <span className="text-base">+</span>
+                      <span>Bài viết mới</span>
+                    </Link>
+                    <Link
+                      to="/quan-ly-tai-khoan"
+                      className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 text-sm rounded-full bg-red-800 text-white font-medium hover:bg-red-900 hover:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 border border-red-700"
+                    >
+                      <UserIcon className="h-3.5 w-3.5" />
+                      <span>Quản lý tài khoản</span>
+                    </Link>
+                  </>
+                )}
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={toggleUserMenu}
+                    className="flex items-center space-x-2 p-2 rounded-full hover:bg-red-600 transition-colors"
+                    aria-expanded={isUserMenuOpen}
+                    aria-haspopup="true"
+                    aria-label="Tài khoản"
+                  >
+                    <UserIcon className="h-6 w-6" />
+                    <span className="hidden md:inline">{getUserDisplayName()}</span>
+                  </button>
+                  
+                  {/* Dropdown tài khoản */}
+                  {isUserMenuOpen && (
+                    <div 
+                      className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-50"
+                      role="menu"
+                      aria-orientation="vertical"
+                      aria-labelledby="user-menu"
+                    >
                       <div className="px-4 py-2 text-sm text-gray-700 border-b">
                         <div className="font-medium">{getUserDisplayName()}</div>
                         <div className="text-gray-500 truncate">{user.email}</div>
@@ -213,7 +210,7 @@ const Header: React.FC<HeaderProps> = memo(() => {
                         to="/tai-khoan"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         role="menuitem"
-                        onClick={() => setIsUserMenuOpen(false)}
+                        onClick={closeUserMenu}
                       >
                         Tài khoản của tôi
                       </Link>
@@ -221,11 +218,27 @@ const Header: React.FC<HeaderProps> = memo(() => {
                         to="/bai-viet-da-luu"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         role="menuitem"
-                        onClick={() => setIsUserMenuOpen(false)}
+                        onClick={closeUserMenu}
                       >
                         Bài viết đã lưu
                       </Link>
                       <div className="border-t border-gray-100"></div>
+                      {isAdmin && (
+                        <>
+                          <button
+                            onClick={() => navigate('/them-bai-bao')}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Bài viết mới
+                          </button>
+                          <button
+                            onClick={() => navigate('/quan-ly-tai-khoan')}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Quản lý tài khoản
+                          </button>
+                        </>
+                      )}
                       <button
                         onClick={handleSignOut}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -233,33 +246,26 @@ const Header: React.FC<HeaderProps> = memo(() => {
                       >
                         Đăng xuất
                       </button>
-                    </>
-                  ) : (
-                    <>
-                      <Link
-                        to="/login"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        role="menuitem"
-                      >
-                        Đăng nhập
-                      </Link>
-                      <Link
-                        to="/register"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        role="menuitem"
-                      >
-                        Đăng ký tài khoản
-                      </Link>
-                    </>
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-
-            {/* Mobile menu button */}
-
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Link
+                  to="/login"
+                  className="px-3 py-2 text-sm font-medium text-white hover:bg-red-600 rounded-md"
+                >
+                  Đăng nhập
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-3 py-2 text-sm font-medium text-white bg-red-800 hover:bg-red-900 rounded-md"
+                >
+                  Đăng ký
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

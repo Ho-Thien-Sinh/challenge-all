@@ -2,12 +2,12 @@ export interface Article {
   id?: string;
   title: string;
   content: string;
-  // Sử dụng url thay vì source_url để thống nhất
+  // Use url instead of source_url for consistency
   url: string;
-  source_url?: string; // Giữ lại để tương thích ngược
+  source_url?: string; // Kept for backward compatibility
   image_url?: string;
   published_at: string | Date;
-  publishedAt?: string | Date; // Thêm cho tương thích
+  publishedAt?: string | Date; // Added for compatibility
   category: string;
   summary?: string;
   author?: string;
@@ -16,10 +16,10 @@ export interface Article {
   updated_at?: string | Date;
   status?: 'published' | 'draft' | 'deleted';
   
-  // Các trường bổ sung từ tuoitre.vn
+  // Additional fields from tuoitre.vn
   tags?: string[];
   
-  // Thống kê - sử dụng cả 2 phiên bản để tương thích
+  // Statistics - using both versions for compatibility
   view_count?: number;
   like_count?: number;
   comment_count?: number;
@@ -27,13 +27,13 @@ export interface Article {
   likes?: number;
   comments?: number;
   
-  // Các trường cho tính năng nổi bật
+  // Fields for featured content
   is_featured?: boolean;
   featured_badge?: boolean;
   featured_order?: number | null;
   
-  // Các trường URL và mô tả
-  link?: string; // Giữ lại cho tương thích
+  // URL and description fields
+  link?: string; // Kept for compatibility
   description?: string;
 }
 

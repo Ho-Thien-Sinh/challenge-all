@@ -2,7 +2,7 @@ import { User } from '@supabase/supabase-js';
 
 declare global {
   namespace Express {
-    // Định nghĩa kiểu user
+    // Define user interface
     interface UserPayload {
       id: string;
       email: string;
@@ -10,12 +10,12 @@ declare global {
       [key: string]: any;
     }
 
-    // Mở rộng Request interface
+    // Extend Request interface
     interface Request {
       user?: UserPayload;
     }
   }
 }
 
-// Bảo đảm file này được coi là module
+// Ensure file is treated as a module
 export {};

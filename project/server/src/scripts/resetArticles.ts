@@ -4,11 +4,11 @@ async function resetArticles() {
   try {
     console.log('Đang xóa tất cả bài viết cũ...');
     
-    // Xóa tất cả bài viết
+    // Delete all articles
     const { error: deleteError } = await supabase
       .from('articles')
       .delete()
-      .neq('id', 0); // Xóa tất cả bài viết trừ những bài có id = 0 (nếu có)
+      .neq('id', 0); // Delete all articles except those with id = 0 (if any)
 
 
     if (deleteError) {
@@ -19,7 +19,7 @@ async function resetArticles() {
     console.log('✅ Đã xóa tất cả bài viết cũ');
     console.log('Hệ thống sẽ tự động cập nhật bài viết mới trong vòng vài phút tới...');
 
-    // Nếu muốn kích hoạt crawl ngay lập tức, có thể gọi API update-articles
+    // If you want to activate crawl immediately, you can call the update-articles API
     try {
       console.log('\nĐang kích hoạt cập nhật bài viết mới...');
       const response = await fetch('http://localhost:5001/api/v1/update-articles', {
@@ -41,5 +41,5 @@ async function resetArticles() {
   }
 }
 
-// Chạy hàm reset
+// Run resetArticles function
 resetArticles();

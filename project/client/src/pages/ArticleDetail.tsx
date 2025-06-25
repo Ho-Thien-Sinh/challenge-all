@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { ArrowLeft, Clock, User, ExternalLink } from 'lucide-react';
+import { FaArrowLeft, FaClock, FaUser, FaExternalLinkAlt } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { fetchWithAuth } from '../lib/api';
 
@@ -71,7 +71,7 @@ const ArticleDetail: React.FC = () => {
           to="/"
           className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
+          <FaArrowLeft className="w-4 h-4 mr-2" />
           Quay về trang chủ
         </Link>
       </div>
@@ -85,7 +85,7 @@ const ArticleDetail: React.FC = () => {
           to="/"
           className="inline-flex items-center text-gray-600 hover:text-blue-600 mb-6 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5 mr-2" />
+          <FaArrowLeft className="w-5 h-5 mr-2" />
           Quay lại
         </Link>
 
@@ -96,7 +96,7 @@ const ArticleDetail: React.FC = () => {
               alt={article.title}
               className="w-full h-64 md:h-96 object-cover"
               onError={(e) => {
-                // Fallback image nếu ảnh lỗi
+                // Fallback image if image fails to load
                 const target = e.target as HTMLImageElement;
                 target.onerror = null;
                 target.src = 'https://via.placeholder.com/800x400?text=Không+có+ảnh';
@@ -107,11 +107,11 @@ const ArticleDetail: React.FC = () => {
           <div className="p-6">
             <div className="flex flex-wrap items-center text-sm text-gray-500 mb-4 gap-4">
               <div className="flex items-center">
-                <User className="w-4 h-4 mr-1" />
+                <FaUser className="w-4 h-4 mr-1" />
                 <span>{article.author || 'Không rõ tác giả'}</span>
               </div>
               <div className="flex items-center">
-                <Clock className="w-4 h-4 mr-1" />
+                <FaClock className="w-4 h-4 mr-1" />
                 <time dateTime={article.published_at}>
                   {format(new Date(article.published_at), 'PPP', { locale: vi })}
                 </time>
@@ -128,7 +128,7 @@ const ArticleDetail: React.FC = () => {
                   rel="noopener noreferrer"
                   className="text-blue-500 hover:underline flex items-center"
                 >
-                  <ExternalLink className="w-4 h-4 mr-1" />
+                  <FaExternalLinkAlt className="w-4 h-4 mr-1" />
                   Nguồn
                 </a>
               )}

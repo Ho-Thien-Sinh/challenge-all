@@ -17,11 +17,11 @@ const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
 
 console.log('🔗 Đã kết nối đến Supabase');
 
-// Hàm trích xuất URL ảnh từ excerpt
+// Function to extract image URL from excerpt
 function extractImageFromExcerpt(excerpt: string): string | null {
   if (!excerpt) return null;
   
-  // Tìm tất cả các thẻ img trong excerpt
+  // Find all img tags in the excerpt
   const imgRegex = /<img[^>]+src="([^">]+)"/g;
   let match;
   let lastMatch = null;
@@ -33,12 +33,12 @@ function extractImageFromExcerpt(excerpt: string): string | null {
   return lastMatch || null;
 }
 
-// Hàm cập nhật ảnh đại diện cho bài viết
+// Function to update article thumbnail images
 async function updateArticleImages() {
   try {
     console.log('🔄 Bắt đầu cập nhật ảnh đại diện cho bài viết...');
     
-    // Lấy tất cả bài viết chưa có ảnh đại diện
+    // Get all articles without a thumbnail image
     const { data: articles, error } = await supabase
       .from('articles')
       .select('*')
@@ -58,14 +58,14 @@ async function updateArticleImages() {
     
     let updatedCount = 0;
     
-    // Duyệt qua từng bài viết
+    // Process each article
     for (const article of articles) {
       try {
         const excerpt = article.excerpt || '';
         const imageUrl = extractImageFromExcerpt(excerpt);
         
         if (imageUrl) {
-          // Cập nhật trường image_url
+          // Update the image_url field
           const { error: updateError } = await supabase
             .from('articles')
             .update({ 
@@ -84,7 +84,7 @@ async function updateArticleImages() {
           console.log(`ℹ️ Không tìm thấy ảnh trong excerpt của bài viết: ${article.title.substring(0, 50)}...`);
         }
         
-        // Đợi một chút để tránh bị chặn bởi rate limiting
+        // Wait a bit to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
         
       } catch (error) {
@@ -99,5 +99,5 @@ async function updateArticleImages() {
   }
 }
 
-// Chạy hàm cập nhật
+// Run the update function
 updateArticleImages();

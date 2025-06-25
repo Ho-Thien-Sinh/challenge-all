@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Search as SearchIcon } from 'lucide-react';
+import { FaSearch as SearchIcon } from 'react-icons/fa';
 import { searchArticles } from '../lib/api';
 import NewsCard from '../components/NewsCard';
 import Pagination from '../components/Pagination';
@@ -61,12 +61,12 @@ const Search = () => {
     }
   }, [query, currentPage, articlesPerPage]);
   
-  // Xử lý tìm kiếm khi có thay đổi query hoặc trang hiện tại
+  // Handle search when query or current page changes
   useEffect(() => {
     performSearch();
   }, [performSearch]);
   
-  // Reset về trang 1 khi query thay đổi
+  // Reset to page 1 when query changes
   useEffect(() => {
     setCurrentPage(1);
   }, [query]);

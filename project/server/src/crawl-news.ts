@@ -5,18 +5,18 @@ import dotenv from 'dotenv';
 
 declare module 'cheerio' {
   interface Cheerio<T> {
-    // Định nghĩa các phương thức tùy chỉnh nếu cần
+    // Define custom methods if needed
   }
   
   interface Element {
-    // Định nghĩa các thuộc tính tùy chỉnh nếu cần
+    // Define custom properties if needed
   }
 }
 
 // Load environment variables
 dotenv.config();
 
-// Định nghĩa kiểu dữ liệu
+// Define ArticleInfo interface
 interface ArticleInfo {
   url: string;
   title: string;
@@ -39,7 +39,7 @@ async function main() {
     }
   });
 
-  // Hàm tải nội dung trang web
+  // Function to fetch page content
   async function fetchPage(url: string): Promise<string> {
     try {
       console.log(`🔍 Đang tải: ${url}`);
@@ -52,7 +52,7 @@ async function main() {
     }
   }
 
-  // Hàm lấy danh sách bài viết từ trang chủ
+  // Function to get list of articles from homepage
   async function getHomepageArticles(): Promise<ArticleInfo[]> {
     try {
       const html = await fetchPage('https://tuoitre.vn');
@@ -60,7 +60,7 @@ async function main() {
       
       const articles: ArticleInfo[] = [];
       
-      // Lấy các bài viết nổi bật
+      // Get featured articles
       $('h3.title-news a, .box-category a, .box-title-text a').each((_index: number, element) => {
         const url = $(element).attr('href');
         const title = $(element).text().trim();
@@ -81,35 +81,34 @@ async function main() {
     }
   }
 
-  // Tạo instance crawler với cấu hình tùy chỉnh
+  // Create crawler instance with custom configuration
   const crawler = new NewsCrawler('https://tuoitre.vn', {
-    maxConcurrent: 1,       // Số lượng request đồng thời
-    delayMs: 3000,          // Thời gian chờ giữa các request (ms)
-    maxRetries: 3,          // Số lần thử lại tối đa
-    batchSize: 5,           // Số bài viết xử lý mỗi lần
-    pagesToCrawl: 2,        // Số trang cần crawl
-    timeout: 30000,         // Thời gian chờ tải trang (30s)
-    debug: true            // Bật chế độ debug
+    maxConcurrent: 1,       // Number of concurrent requests
+    delayMs: 3000,          // Time delay between requests (ms)
+    maxRetries: 3,          // Maximum number of retries
+    pagesToCrawl: 2,        // Number of pages to crawl
+    timeout: 30000,         // Page load timeout (30s)
+    debug: true            // Enable debug mode
   });
 
   try {
     console.log('🚀 Bắt đầu thu thập dữ liệu từ Tuổi Trẻ Online');
     console.log('='.repeat(60));
     
-    // Lấy danh sách bài viết từ trang chủ
+    // Get list of articles from homepage
     console.log('\n📰 Đang lấy danh sách bài viết...');
     const articles = await getHomepageArticles();
     
     console.log(`✅ Tìm thấy ${articles.length} bài viết`);
     console.log('\n============================================================');
     
-    // Hàm cắt ngắn văn bản
+    // Function to truncate text
     function truncate(str: string, maxLength: number): string {
       if (str.length <= maxLength) return str;
       return str.substring(0, maxLength - 3) + '...';
     }
 
-    // Hàm hiển thị danh sách bài viết
+    // Function to display articles
     function displayArticles(articles: ArticleInfo[], count: number = 10) {
       const line = '─'.repeat(80);
       console.log('\n' + '📋 DANH SÁCH BÀI VIẾT MỚI NHẤT'.padEnd(80, ' '));
@@ -124,18 +123,18 @@ async function main() {
 
     displayArticles(articles);
 
-    // Xử lý từng bài viết
+    // Process each article
     for (let i = 0; i < Math.min(5, articles.length); i++) {
       const article = articles[i];
       try {
         process.stdout.write(`   ⏳ [${i + 1}/${Math.min(5, articles.length)}] Đang xử lý: ${article.title.substring(0, 50)}${article.title.length > 50 ? '...' : ''} `);
         
         try {
-          // Xử lý bài viết
+          // Process article
           const result = await crawler.processArticle(article.url, 'thoi-su');
           
           if (result) {
-            // Ép kiểu tạm thời để tránh lỗi TypeScript
+            // Temporary type cast to avoid TypeScript error
             const article = result as any;
             
             console.log('\n   ✅ Đã xử lý thành công:');
@@ -143,12 +142,12 @@ async function main() {
             console.log(`   📅 Ngày đăng: ${article.published_at ? new Date(article.published_at).toLocaleString() : 'Không rõ'}`);
             console.log(`   👤 Tác giả: ${article.author || 'Không rõ'}`);
             
-            // Hiển thị mô tả nếu có
+            // Display description if available
             if (article.description) {
               console.log(`   📝 ${truncate(article.description, 100)}`);
             }
             
-            // Hiển thị ảnh nếu có
+            // Display image if available
             if (article.image) {
               console.log(`   🖼️ Ảnh đại diện: ${truncate(article.image, 60)}`);
             }
@@ -159,16 +158,16 @@ async function main() {
           const errorMessage = error instanceof Error ? error.message : 'Lỗi không xác định';
           console.log(`\n   ❌ Lỗi khi xử lý bài viết: ${errorMessage}`);
           
-          // Ghi log lỗi chi tiết
+          // Log error details
           if (error instanceof Error) {
             console.error(`   Chi tiết lỗi: ${error.stack || error.message}`);
           }
           
-          // Tiếp tục với bài viết tiếp theo thay vì dừng lại
+          // Continue with the next article instead of stopping
           continue;
         }
         
-        // Đợi một chút giữa các bài viết để tránh bị block
+        // Wait a bit between articles to avoid being blocked
         if (i < Math.min(4, articles.length - 1)) {
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
@@ -183,7 +182,7 @@ async function main() {
     
   } catch (error) {
     console.error('❌ Lỗi trong quá trình chạy:', error);
-    // Dọn dẹp tài nguyên
+    // Clean up resources
     console.log('\n🧹 Cleaning up...');
     try {
       if (crawler) {
@@ -196,13 +195,13 @@ async function main() {
   }
 }
 
-// Xử lý tín hiệu dừng
+// Handle stop signal
 process.on('SIGINT', async () => {
   console.log('\n🛑 Received SIGINT. Stopping crawler...');
   process.exit(0);
 });
 
-// Bắt đầu chương trình
+// Start the program
 main().catch(error => {
   const errorMessage = error instanceof Error ? error.message : 'Unknown error';
   console.error('❌ Failed to start crawler:', errorMessage);
