@@ -18,61 +18,61 @@ export const adminService = {
    */
   async getUsers(): Promise<UserProfile[]> {
     try {
-      console.log('Bắt đầu lấy danh sách người dùng...');
+      console.log('Fetching user list...');
       
       // 1. Check authentication
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !user) {
-        console.error('Lỗi xác thực:', authError?.message || 'Không có thông tin người dùng');
-        throw new Error('Chưa đăng nhập');
+        console.error('Authentication error:', authError?.message || 'No user information');
+        throw new Error('Not logged in');
       }
 
-      console.log('Đã xác thực người dùng:', user.id);
+      console.log('User authenticated:', user.id);
 
       // 2. Temporarily skip admin role check for testing
       // const { data: currentUserProfile, error: profileError } = await supabase
       //   .from('profiles')
       //   .select('role')
       //   .eq('id', user.id)
-      //   .maybeSingle(); // Sử dụng maybeSingle thay vì single
+      //   .maybeSingle(); // Use maybeSingle instead of single
 
       // if (profileError) {
-      //   console.error('Lỗi khi lấy thông tin profile:', profileError);
-      //   throw new Error('Không thể kiểm tra quyền truy cập');
+      //   console.error('Error getting profile information:', profileError);
+      //   throw new Error('Unable to verify access rights');
       // }
 
 
       // if (!currentUserProfile || currentUserProfile.role !== 'admin') {
-      //   console.error('Người dùng không có quyền admin');
-      //   throw new Error('Không có quyền truy cập');
+      //   console.error('User does not have admin rights');
+      //   throw new Error('Access denied');
       // }
 
 
       // 3. Get a list of all users
-      console.log('Đang lấy danh sách người dùng từ bảng profiles...');
+      console.log('Getting user list from profiles table...');
       const { data: users, error: usersError, count } = await supabase
         .from('profiles')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
 
       if (usersError) {
-        console.error('Lỗi khi lấy danh sách người dùng:', usersError);
+        console.error('Error getting user list:', usersError);
         
         // If error is due to non-existent table
         if (usersError.code === '42P01') { // 42P01 = undefined_table
-          console.warn('Bảng profiles chưa được tạo');
-          return []; // Trả về mảng rỗng thay vì lỗi
+          console.warn('Profiles table does not exist');
+          return []; // Return empty array instead of error
         }
         
-        throw new Error('Không thể tải danh sách người dùng: ' + usersError.message);
+        throw new Error('Failed to load user list: ' + usersError.message);
       }
 
-      console.log(`Đã lấy được ${users?.length || 0} người dùng`);
+      console.log(`Retrieved ${users?.length || 0} users`);
 
       // 4. If no users found, return empty array
       if (!users || users.length === 0) {
-        console.warn('Không tìm thấy người dùng nào trong bảng profiles');
+        console.warn('No users found in the profiles table');
         return [];
       }
 
@@ -88,16 +88,16 @@ export const adminService = {
         }
       }));
     } catch (error) {
-      console.error('Lỗi trong getUsers:', error);
+      console.error('Error in getUsers:', error);
       
       // If error is due to no data found, return empty array
       if (error instanceof Error && error.message.includes('no rows returned')) {
-        console.warn('Không tìm thấy dữ liệu người dùng');
+        console.warn('No user data found');
         return [];
       }
       
-      // Ném lại lỗi cho phía UI xử lý
-      throw new Error(error instanceof Error ? error.message : 'Đã xảy ra lỗi khi lấy danh sách người dùng');
+      // Throw error for UI to handle
+      throw new Error(error instanceof Error ? error.message : 'An error occurred while fetching the user list');
     }
   },
 
@@ -106,10 +106,10 @@ export const adminService = {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
-      throw new Error('Chưa đăng nhập');
+      throw new Error('Not logged in');
     }
 
-    // Kiểm tra quyền admin
+    // Check admin rights
     const { data: adminProfile } = await supabase
       .from('profiles')
       .select('role')
@@ -117,12 +117,12 @@ export const adminService = {
       .single();
 
     if (adminProfile?.role !== 'admin') {
-      throw new Error('Không có quyền thực hiện hành động này');
+      throw new Error('No permission to perform this action');
     }
 
     // Prevent changing own role
     if (userId === user.id) {
-      throw new Error('Không thể thay đổi quyền của chính mình');
+      throw new Error('Cannot change your own role');
     }
 
     const { error } = await supabase
@@ -133,15 +133,15 @@ export const adminService = {
     if (error) throw error;
   },
 
-  // Xóa người dùng
+  // Delete user
   async deleteUser(userId: string): Promise<void> {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
-      throw new Error('Chưa đăng nhập');
+      throw new Error('Not logged in');
     }
 
-    // Kiểm tra quyền admin
+    // Check admin role
     const { data: adminProfile } = await supabase
       .from('profiles')
       .select('role')
@@ -149,12 +149,12 @@ export const adminService = {
       .single();
 
     if (adminProfile?.role !== 'admin') {
-      throw new Error('Không có quyền thực hiện hành động này');
+      throw new Error('Not authorized to perform this action');
     }
 
     // Prevent self-deletion
     if (userId === user.id) {
-      throw new Error('Không thể xóa chính mình');
+      throw new Error('Cannot delete yourself');
     }
 
     // Delete user from auth.users table

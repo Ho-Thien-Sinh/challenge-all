@@ -1,21 +1,11 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Request, Response, NextFunction } from 'express';
 import * as crypto from 'crypto';
-import * as nodemailer from 'nodemailer';
 import '../types';
 
 declare global {
   var __supabaseClient: SupabaseClient | undefined;
 }
-
-// Configure nodemailer transporter
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER || 'your-email@gmail.com',
-        pass: process.env.EMAIL_PASS || 'your-app-password'
-    }
-});
 
 // User interface
 interface User {
@@ -83,10 +73,6 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
             id: user.id,
             email: user.email || '', // Đảm bảo email không bị undefined
             role: (userData?.role as 'admin' | 'user') || 'user',
-            app_metadata: user.app_metadata,
-            user_metadata: user.user_metadata,
-            aud: user.aud,
-            created_at: user.created_at
         };
 
         next();
@@ -102,23 +88,6 @@ export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
         return res.status(403).json({ error: 'Không có quyền truy cập' });
     }
     next();
-};
-
-// Function to send verification email
-export const sendVerificationEmail = async (email: string, token: string) => {
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: 'cusinhhh@gmail.com', // Email admin để xác nhận
-        subject: 'Yêu cầu đăng ký tài khoản admin',
-        html: `
-            <h2>Yêu cầu đăng ký tài khoản admin mới</h2>
-            <p>Email: ${email}</p>
-            <p>Vui lòng xác nhận hoặc từ chối yêu cầu này.</p>
-            <a href="${process.env.APP_URL}/api/auth/verify-admin?token=${token}">Xác nhận</a>
-        `
-    };
-
-    await transporter.sendMail(mailOptions);
 };
 
 // Function to generate verification token

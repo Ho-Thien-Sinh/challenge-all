@@ -1,8 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import supabase from "../lib/supabase.js";
-import { sendVerificationEmail, generateVerificationToken, authenticate } from '../lib/auth.js';
+import { generateVerificationToken, authenticate } from '../lib/auth.js';
 import { z } from 'zod';
 import { fromZodError } from 'zod-validation-error';
+import jwt, { JwtPayload, Secret } from 'jsonwebtoken';
 
 // Kiểm tra xem có phải đang chạy trong môi trường ESM không
 declare const __filename: string;
@@ -37,11 +38,15 @@ const handleError = (err: unknown, res: Response) => {
 
 const router = Router();
 
+const JWT_SECRET: Secret = process.env.JWT_SECRET || 'your_jwt_secret';
+
 // Register user account
 router.post('/register', async (req: Request, res: Response) => {
   try {
+    console.log('Bắt đầu đăng ký');
     // Validate input
     const { email, password } = registerSchema.parse(req.body);
+    console.log('Validate xong:', email);
     
     // Check if email exists
     const { data: existingUser, error: userError } = await supabase
@@ -49,8 +54,10 @@ router.post('/register', async (req: Request, res: Response) => {
       .select('id')
       .eq('email', email)
       .single();
-      
+    console.log('Kiểm tra email xong:', existingUser);
+    
     if (existingUser) {
+      console.log('Email đã tồn tại:', email);
       return res.status(400).json({ error: 'Email đã được sử dụng' });
     }
     
@@ -62,6 +69,7 @@ router.post('/register', async (req: Request, res: Response) => {
         emailRedirectTo: `${process.env.FRONTEND_URL}/login`
       }
     });
+    console.log('Tạo user trên Supabase xong:', data, authError);
     
     if (authError) throw authError;
     
@@ -77,23 +85,17 @@ router.post('/register', async (req: Request, res: Response) => {
           created_at: new Date().toISOString()
         }
       ]);
-      
+    console.log('Tạo profile user xong', profileError);
+    
     if (profileError) throw profileError;
     
     // Send verification email
-    const verificationToken = generateVerificationToken();
-    await supabase
-      .from('users')
-      .update({ verification_token: verificationToken })
-      .eq('id', data.user?.id);
-      
-    await sendVerificationEmail(email, verificationToken);
-    
-    res.status(201).json({ 
-      message: 'Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản.' 
-    });
-  } catch (error) {
-    handleError(error, res);
+    // Nếu cần logic xác thực email, hãy dùng Supabase hoặc dịch vụ khác
+    res.status(201).json({ success: true, message: 'Đăng ký thành công. Vui lòng xác thực OTP.' });
+    console.log('Trả về response thành công');
+  } catch (err) {
+    const error = err as Error;
+    res.status(500).json({ success: false, message: 'Lỗi server khi đăng ký', error: error.message });
   }
 });
 
@@ -106,17 +108,7 @@ router.post('/request-admin', authenticate, async (req: Request, res: Response) 
         }
 
         const userId = req.user.id;
-        const verificationToken = generateVerificationToken();
-        
-        // Save verification token
-        await supabase
-            .from('users')
-            .update({ verification_token: verificationToken })
-            .eq('id', userId);
-            
-        // Send verification email
-        await sendVerificationEmail(req.user.email, verificationToken);
-        
+        // Nếu cần logic xác thực email, hãy dùng Supabase hoặc dịch vụ khác
         res.json({ message: 'Đã gửi yêu cầu đăng ký admin' });
     } catch (error) {
         console.error('Lỗi yêu cầu đăng ký admin:', error);
@@ -192,7 +184,14 @@ router.post('/login', async (req: Request, res: Response) => {
       });
     }
     
-    // Set secure cookie with access token
+    // @ts-expect-error: TypeScript type issue with jsonwebtoken
+    const token = jwt.sign(
+      { id: userData.id, email: userData.email, role: userData.role },
+      JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
+    );
+    
+    // Set secure cookie với access token của Supabase (nếu muốn giữ)
     res.cookie('sb-access-token', data.session?.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -201,12 +200,14 @@ router.post('/login', async (req: Request, res: Response) => {
       path: '/'
     });
     
+    // Trả về user info và JWT
     res.json({
       user: {
         id: userData.id,
         email: userData.email,
         role: userData.role
-      }
+      },
+      token
     });
   } catch (error) {
     handleError(error, res);
@@ -244,6 +245,91 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
     res.json(user);
   } catch (error) {
     handleError(error, res);
+  }
+});
+
+// Hàm sinh OTP 6 số
+function generateOTP(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// Endpoint gửi OTP qua Supabase
+router.post('/send-otp', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ success: false, message: 'Email không hợp lệ' });
+    }
+    // Gửi OTP qua Supabase
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true, // hoặc false nếu chỉ cho phép user đã tồn tại
+        emailRedirectTo: process.env.FRONTEND_URL || 'http://localhost:3000'
+      }
+    });
+    if (error) {
+      return res.status(500).json({ success: false, message: 'Không gửi được OTP', error: error.message });
+    }
+    res.json({ success: true, message: 'OTP đã được gửi qua email!' });
+  } catch (error) {
+    console.error('Lỗi gửi OTP qua Supabase:', error);
+    res.status(500).json({ success: false, message: 'Không gửi được OTP' });
+  }
+});
+
+// Endpoint xác thực OTP qua Supabase
+router.post('/verify-otp', async (req: Request, res: Response) => {
+  try {
+    const { email, token } = req.body; // token là mã OTP user nhập từ email
+    if (!email || !token) {
+      return res.status(400).json({ success: false, message: 'Thiếu email hoặc mã OTP' });
+    }
+    // Gọi Supabase để xác thực OTP
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email'
+    });
+    if (error) {
+      return res.status(400).json({ success: false, message: 'OTP không hợp lệ hoặc đã hết hạn', error: error.message });
+    }
+    res.json({ success: true, message: 'Xác thực OTP thành công!', data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi server khi xác thực OTP' });
+  }
+});
+
+// Endpoint xác thực OTP cho đăng ký dùng JWT
+router.post('/verify-register-otp', async (req: Request, res: Response) => {
+  try {
+    const { otpToken, otp } = req.body;
+    if (!otpToken || !otp) {
+      return res.status(400).json({ success: false, message: 'Thiếu otpToken hoặc OTP' });
+    }
+    let payload: JwtPayload;
+    try {
+      payload = jwt.verify(otpToken, JWT_SECRET) as JwtPayload;
+    } catch (err: unknown) {
+      return res.status(400).json({ success: false, message: 'otpToken không hợp lệ hoặc đã hết hạn' });
+    }
+    if (!payload.otp || !payload.email) {
+      return res.status(400).json({ success: false, message: 'otpToken không hợp lệ' });
+    }
+    if (otp !== payload.otp) {
+      return res.status(400).json({ success: false, message: 'Mã OTP không đúng' });
+    }
+    // Cập nhật is_verified=true cho user
+    const { error } = await supabase
+      .from('users')
+      .update({ is_verified: true })
+      .eq('email', payload.email);
+    if (error) {
+      return res.status(500).json({ success: false, message: 'Lỗi khi cập nhật xác thực user' });
+    }
+    res.json({ success: true, message: 'Xác thực OTP thành công, tài khoản đã được xác minh!' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Lỗi server khi xác thực OTP' });
   }
 });
 

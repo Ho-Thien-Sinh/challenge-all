@@ -32,7 +32,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
-import swaggerSpec from './config/swagger.js';
+import { swaggerSpec, swaggerUiOptions } from './config/swagger.js';
 import { createClient } from '@supabase/supabase-js';
 import { startCrawler, stopCrawler } from './crawler.js';
 import { startScheduler as startArticleScheduler } from './scheduler.js';
@@ -224,12 +224,21 @@ const limiter = rateLimit({
 // Apply rate limiter to all API routes
 app.use('/api', limiter);
 
-// Swagger UI
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'News API Documentation',
-}));
+// Log Swagger spec for debugging
+const swaggerSpecObj = swaggerSpec as any;
+console.log('Swagger spec tags:', swaggerSpecObj.definition?.tags?.map((t: any) => t.name));
+console.log('Swagger spec paths:', Object.keys(swaggerSpecObj.definition?.paths || {}));
+
+// Swagger documentation
+app.use('/api-docs', 
+  swaggerUi.serve, 
+  swaggerUi.setup(swaggerSpec, {
+    ...swaggerUiOptions,
+    customCss: '.swagger-ui .topbar { display: none }',
+    customfavIcon: '/favicon.ico',
+    customSiteTitle: 'News Aggregator API Documentation'
+  })
+);
 
 // Health check endpoints (no auth required)
 app.get('/health', (req, res) => {
@@ -242,10 +251,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Apply API key validation to all API routes under /api/v1
-app.use('/api/v1', apiKeyAuth);
-
-// Mount the API router
+// Mount the API router (API key validation is handled within the router)
 app.use(apiRouter);
 
 // Root endpoint

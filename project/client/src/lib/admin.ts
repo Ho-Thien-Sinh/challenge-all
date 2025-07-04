@@ -25,7 +25,7 @@ const isAdmin = async (userId: string): Promise<boolean> => {
 
     return profile?.role === 'admin';
   } catch (error) {
-    console.error('Lỗi khi kiểm tra quyền admin:', error);
+    console.error('Error checking admin role:', error);
     return false;
   }
 };

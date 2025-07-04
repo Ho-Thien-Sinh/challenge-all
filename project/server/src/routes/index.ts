@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import articlesRouter from './articles.js';
 import authRouter from './auth.js';
-import categoriesRouter from './categories.js';
+import categoriesRouter from './categoryRoutes.js';
+import usersRouter from './userRoutes.js';
 import searchRouter from './search.js';
+import systemRouter from './system.js';
 import { apiKeyAuth } from '../middleware/apiKeyAuth.js';
 
 console.log('Setting up API routes...');
@@ -21,14 +23,18 @@ v1Router.get('/health', (req, res) => {
   });
 });
 
-// Add API key authentication middleware for all API routes
+// Mount public routes first (no API key required)
+v1Router.use('/auth', authRouter);
+
+// Add API key authentication middleware for protected routes
 v1Router.use(apiKeyAuth);
 
-// Mount routers under /api/v1
+// Mount protected routes (require API key)
 v1Router.use('/articles', articlesRouter);
-v1Router.use('/auth', authRouter);
 v1Router.use('/categories', categoriesRouter);
+v1Router.use('/users', usersRouter);
 v1Router.use('/search', searchRouter);
+v1Router.use('/system', systemRouter);
 
 // Mount v1 router under /api/v1
 router.use('/api/v1', v1Router);
@@ -37,6 +43,9 @@ router.use('/api/v1', v1Router);
 console.log('Registered routes:');
 console.log('  GET /api/v1/health');
 console.log('  GET /api/v1/articles');
+console.log('  GET /api/v1/categories');
+console.log('  GET /api/v1/users');
+console.log('  GET /api/v1/system/health');
 console.log('  ... and other routes');
 
 export default router;

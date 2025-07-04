@@ -33,18 +33,18 @@ const AdminUsersPage = () => {
       const users = await adminService.getUsers();
       setUsers(users);
     } catch (err) {
-      console.error('Lỗi khi lấy danh sách người dùng:', err);
-      setError(err instanceof Error ? err.message : 'Không thể tải danh sách người dùng');
+      console.error('Error fetching user list:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load user list');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user?.email === 'cusinhhh@gmail.com') { // Chỉ admin mới được phép xem
+    if (user?.email === 'cusinhhh@gmail.com') { // Only admin is allowed to view
       fetchUsers();
     } else {
-      setError('Bạn không có quyền truy cập trang này');
+      setError('You do not have permission to access this page');
       setLoading(false);
     }
   }, [user]);
@@ -72,7 +72,7 @@ const AdminUsersPage = () => {
       if (editData.role) {
         await adminService.updateUserRole(userId, editData.role);
         
-        // Cập nhật UI
+        // Update UI
         setUsers(users.map(u => 
           u.id === userId 
             ? { 
@@ -87,14 +87,14 @@ const AdminUsersPage = () => {
       setEditData({});
       
     } catch (err) {
-      console.error('Lỗi khi cập nhật người dùng:', err);
-      setError(err instanceof Error ? err.message : 'Có lỗi xảy ra khi cập nhật người dùng');
+      console.error('Error updating user:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred while updating the user');
     }
   };
 
   // Delete user
   const deleteUser = async (userId: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa người dùng này?')) return;
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
     
     try {
       setIsDeleting(userId);
@@ -105,8 +105,8 @@ const AdminUsersPage = () => {
       setUsers(users.filter(u => u.id !== userId));
       
     } catch (err) {
-      console.error('Lỗi khi xóa người dùng:', err);
-      setError(err instanceof Error ? err.message : 'Không thể xóa người dùng');
+      console.error('Error deleting user:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete user');
     } finally {
       setIsDeleting(null);
     }
@@ -130,7 +130,7 @@ const AdminUsersPage = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          Bạn không có quyền truy cập trang này
+          You do not have permission to access this page
         </div>
       </div>
     );
@@ -139,11 +139,11 @@ const AdminUsersPage = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">Quản lý người dùng</h1>
+        <h1 className="text-2xl font-bold">User Management</h1>
         <div className="relative">
           <input
             type="text"
-            placeholder="Tìm kiếm người dùng..."
+            placeholder="Search users..."
             className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -176,19 +176,19 @@ const AdminUsersPage = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Người dùng
+                User
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Email
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Vai trò
+Role
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ngày tạo
+Created At
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Hành động
+Actions
               </th>
             </tr>
           </thead>
@@ -212,7 +212,7 @@ const AdminUsersPage = () => {
                     </div>
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900">
-                        {userItem.user_metadata?.full_name || 'Chưa đặt tên'}
+                        {userItem.user_metadata?.full_name || 'No name set'}
                       </div>
                     </div>
                   </div>
@@ -233,7 +233,7 @@ const AdminUsersPage = () => {
                       className="border rounded px-2 py-1 text-sm"
                     >
                       <option value="admin">Admin</option>
-                      <option value="user">Người dùng</option>
+                      <option value="user">User</option>
                     </select>
                   ) : (
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -241,12 +241,12 @@ const AdminUsersPage = () => {
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-blue-100 text-blue-800'
                     }`}>
-                      {userItem.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
+                      {userItem.role === 'admin' ? 'Administrator' : 'User'}
                     </span>
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(userItem.created_at).toLocaleDateString('vi-VN')}
+                  {new Date(userItem.created_at).toLocaleDateString('en-US')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   {editingUserId === userItem.id ? (
@@ -269,7 +269,7 @@ const AdminUsersPage = () => {
                       <button
                         onClick={() => startEditing(userItem)}
                         className="text-blue-600 hover:text-blue-900 mr-2"
-                        title="Chỉnh sửa"
+                        title="Edit"
                       >
                         <Pencil className="h-5 w-5" />
                       </button>
@@ -278,7 +278,7 @@ const AdminUsersPage = () => {
                           onClick={() => deleteUser(userItem.id)}
                           className="text-red-600 hover:text-red-900"
                           disabled={isDeleting === userItem.id}
-                          title="Xóa"
+                          title="Delete"
                         >
                           {isDeleting === userItem.id ? (
                             <div className="h-5 w-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
